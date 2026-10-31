@@ -23,6 +23,8 @@ struct Channel<'a> {
 pub fn all(site: &Site) -> Vec<OutputFile> {
     let mut out = Vec::new();
     feeds(site, &mut out);
+    out.push(atom(site));
+    out.push(json_feed(site));
     out.push(sitemap(site));
     out.push(search_index(site));
     for a in &site.aliases {
@@ -270,6 +272,94 @@ fn absolutize(html: &str, base: &str) -> String {
         }
     }
     out
+}
+
+/// `/atom.xml`: the home feed as Atom 1.0.
+fn atom(site: &Site) -> OutputFile {
+    let cfg = &site.config;
+    let entries: Vec<&Entry> = site.regular.iter().map(|&i| &site.entries[i]).collect();
+    let updated = entries
+        .iter()
+        .filter_map(|e| e.page.fm.lastmod.or(e.date()))
+        .max();
+    let iso = |d: DateTime<FixedOffset>| d.format("%Y-%m-%dT%H:%M:%S%:z").to_string();
+    let mut x = String::from(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\">\n",
+    );
+    x.push_str(&format!("  <title>{}</title>\n", xml(&cfg.title)));
+    x.push_str(&format!("  <id>{}</id>\n", xml(&cfg.base_url)));
+    x.push_str(&format!("  <link href=\"{}\"/>\n", xml(&cfg.base_url)));
+    x.push_str(&format!(
+        "  <link rel=\"self\" href=\"{}\"/>\n",
+        xml(&cfg.permalink("atom.xml"))
+    ));
+    if let Some(u) = updated {
+        x.push_str(&format!("  <updated>{}</updated>\n", iso(u)));
+    }
+    if let Some(a) = &cfg.author {
+        x.push_str(&format!("  <author><name>{}</name></author>\n", xml(a)));
+    }
+    for e in entries {
+        let link = cfg.permalink(&e.page.url);
+        x.push_str("  <entry>\n");
+        x.push_str(&format!("    <title>{}</title>\n", xml(e.title())));
+        x.push_str(&format!("    <link href=\"{}\"/>\n", xml(&link)));
+        x.push_str(&format!("    <id>{}</id>\n", xml(&link)));
+        if let Some(d) = e.date() {
+            x.push_str(&format!("    <published>{}</published>\n", iso(d)));
+            x.push_str(&format!(
+                "    <updated>{}</updated>\n",
+                iso(e.page.fm.lastmod.unwrap_or(d))
+            ));
+        }
+        x.push_str(&format!(
+            "    <summary type=\"html\">{}</summary>\n",
+            xml(&absolutize(&e.summary, &cfg.base_url))
+        ));
+        x.push_str("  </entry>\n");
+    }
+    x.push_str("</feed>\n");
+    OutputFile {
+        path: "atom.xml".to_string(),
+        contents: x,
+    }
+}
+
+/// `/feed.json`: the home feed as JSON Feed 1.1.
+fn json_feed(site: &Site) -> OutputFile {
+    let cfg = &site.config;
+    let items: Vec<serde_json::Value> = site
+        .regular
+        .iter()
+        .map(|&i| {
+            let e = &site.entries[i];
+            let link = cfg.permalink(&e.page.url);
+            let mut item = serde_json::json!({
+                "id": link,
+                "url": link,
+                "title": e.title(),
+                "content_html": absolutize(&e.summary, &cfg.base_url),
+            });
+            if let Some(d) = e.date() {
+                item["date_published"] = d.to_rfc3339().into();
+            }
+            item
+        })
+        .collect();
+    let mut feed = serde_json::json!({
+        "version": "https://jsonfeed.org/version/1.1",
+        "title": cfg.title,
+        "home_page_url": cfg.base_url,
+        "feed_url": cfg.permalink("feed.json"),
+        "items": items,
+    });
+    if let Some(a) = &cfg.author {
+        feed["authors"] = serde_json::json!([{ "name": a }]);
+    }
+    OutputFile {
+        path: "feed.json".to_string(),
+        contents: serde_json::to_string_pretty(&feed).expect("feed serialises") + "\n",
+    }
 }
 
 pub fn xml(s: &str) -> String {

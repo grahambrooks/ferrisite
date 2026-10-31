@@ -43,6 +43,15 @@ pub struct Config {
     /// Post-processing of rendered Markdown (the equivalent of Hugo render hooks).
     #[serde(default)]
     pub markup: MarkupConfig,
+    /// Social cards (DESIGN.md section 10).
+    #[serde(default)]
+    pub cards: CardsConfig,
+    /// `ferrisite check` settings.
+    #[serde(default)]
+    pub check: CheckConfig,
+    /// Agent-readable output (DESIGN.md section 9).
+    #[serde(default)]
+    pub agents: AgentsConfig,
     /// Per-taxonomy options, keyed by taxonomy name.
     #[serde(default)]
     pub taxonomy_options: BTreeMap<String, TaxonomyOptions>,
@@ -151,6 +160,119 @@ fn default_light_theme() -> String {
 
 fn default_dark_theme() -> String {
     "base16-ocean.dark".to_string()
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CheckConfig {
+    /// Broken links accepted until the content is fixed, each with a reason.
+    /// `link` is the site-relative target as `check` prints it.
+    #[serde(default)]
+    pub known_broken: Vec<KnownBroken>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KnownBroken {
+    pub link: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CardsConfig {
+    /// Generate `images/cards/<slug>.png` for every page.
+    #[serde(default)]
+    pub enabled: bool,
+    /// PNG or JPEG (relative to the site root) drawn as a round headshot.
+    #[serde(default)]
+    pub image: Option<String>,
+    /// Second line under the byline, e.g. the site's domain.
+    #[serde(default)]
+    pub label: Option<String>,
+    #[serde(default = "card_bg")]
+    pub background: String,
+    #[serde(default = "card_accent")]
+    pub accent: String,
+    #[serde(default = "card_text")]
+    pub text: String,
+    #[serde(default = "card_divider")]
+    pub divider: String,
+}
+
+impl Default for CardsConfig {
+    fn default() -> Self {
+        CardsConfig {
+            enabled: false,
+            image: None,
+            label: None,
+            background: card_bg(),
+            accent: card_accent(),
+            text: card_text(),
+            divider: card_divider(),
+        }
+    }
+}
+
+fn card_bg() -> String {
+    "#15171c".into()
+}
+fn card_accent() -> String {
+    "#7fb3ff".into()
+}
+fn card_text() -> String {
+    "#e6e1d6".into()
+}
+fn card_divider() -> String {
+    "#2a2f3a".into()
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsConfig {
+    /// Markdown copies, `llms.txt` and `llms-full.txt`.
+    #[serde(default = "yes")]
+    pub enabled: bool,
+    /// The `llms.txt` blockquote; defaults to the site description.
+    #[serde(default)]
+    pub summary: Option<String>,
+    /// Taxonomies listed as sections of `llms.txt` (e.g. series, projects).
+    #[serde(default)]
+    pub taxonomies: Vec<String>,
+    /// Section whose list is "Recent …" in `llms.txt` and the content of
+    /// `llms-full.txt`.
+    #[serde(default)]
+    pub recent_section: Option<String>,
+    #[serde(default = "default_recent_count")]
+    pub recent_count: usize,
+    #[serde(default = "default_full_max_bytes")]
+    pub full_max_bytes: usize,
+    /// A `Content-Signal:` value for robots.txt (Cloudflare's convention),
+    /// e.g. `search=yes, ai-input=yes, ai-train=no`. Omitted when unset.
+    #[serde(default)]
+    pub content_signal: Option<String>,
+}
+
+impl Default for AgentsConfig {
+    fn default() -> Self {
+        AgentsConfig {
+            enabled: true,
+            summary: None,
+            taxonomies: Vec::new(),
+            recent_section: None,
+            recent_count: default_recent_count(),
+            full_max_bytes: default_full_max_bytes(),
+            content_signal: None,
+        }
+    }
+}
+
+fn default_recent_count() -> usize {
+    20
+}
+
+fn default_full_max_bytes() -> usize {
+    2_000_000
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]

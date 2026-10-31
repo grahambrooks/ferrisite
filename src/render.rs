@@ -42,6 +42,8 @@ struct SiteCtx {
     params: BTreeMap<String, toml::Value>,
     /// Absolute URL of the generated stylesheet (highlighting, diagram modes).
     stylesheet: String,
+    /// robots.txt `Content-Signal:` value, if configured.
+    content_signal: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -50,6 +52,10 @@ struct PageCtx<'a> {
     title: &'a str,
     url: &'a str,
     permalink: String,
+    /// Absolute URL of the page's Markdown copy (`<link rel="alternate">`).
+    markdown_url: String,
+    /// Absolute URL of the page's social card (when cards are enabled).
+    card: Option<String>,
     section: &'a str,
     date: Option<String>,
     lastmod: Option<String>,
@@ -114,6 +120,10 @@ impl Renderer {
         env.add_filter("markdownify", |s: String| {
             Value::from_safe_string(markup::markdownify(&s))
         });
+        let card_base = config.base_url.clone();
+        env.add_function("card", move |url: String| {
+            format!("{card_base}{}", crate::cards::card_path(&url))
+        });
         let base = config.base_url.clone();
         env.add_function("absurl", move |path: String| {
             format!("{}{}", base, path.trim_start_matches('/'))
@@ -127,6 +137,7 @@ impl Renderer {
                 description: config.description.clone(),
                 params: config.params.clone(),
                 stylesheet: config.permalink(&config.markup.stylesheet),
+                content_signal: config.agents.content_signal.clone(),
             },
         })
     }
@@ -143,7 +154,20 @@ impl Renderer {
         page: &Brief,
         lists: &BTreeMap<String, Vec<Brief>>,
     ) -> Result<Option<String>> {
-        let template = format!("shortcodes/{name}.html");
+        self.render_shortcode_as(name, "html", args, inner, page, lists)
+    }
+
+    /// `shortcodes/<name>.<ext>`: `html` for pages, `md` for Markdown copies.
+    pub fn render_shortcode_as(
+        &self,
+        name: &str,
+        ext: &str,
+        args: &[String],
+        inner: Option<&str>,
+        page: &Brief,
+        lists: &BTreeMap<String, Vec<Brief>>,
+    ) -> Result<Option<String>> {
+        let template = format!("shortcodes/{name}.{ext}");
         if self.env.get_template(&template).is_err() {
             return Ok(None);
         }
@@ -172,7 +196,7 @@ impl Renderer {
             let html = self
                 .render(
                     &template,
-                    context! { site => site_ctx.clone(), page => ser(&page_ctx(site, entry, true)) },
+                    context! { site => site_ctx.clone(), current => self.current(site, &entry.page.url), page => ser(&page_ctx(site, entry, true)) },
                 )
                 .with_context(|| format!("rendering {}", entry.page.source))?;
             out.push(OutputFile {
@@ -192,7 +216,7 @@ impl Renderer {
                             "list.html".to_string(),
                         ],
                         context! {
-                            site => site_ctx.clone(),
+                            site => site_ctx.clone(), current => self.current(site, &pager.url),
                             page => ser(&page),
                             section => section_ctx(section),
                             pager => ser(&pager_ctx(site, pager)),
@@ -221,7 +245,7 @@ impl Renderer {
         let html = self
             .render(
                 &["home.html".to_string()],
-                context! { site => site_ctx.clone(), page => ser(&home), recent => ser(&recent) },
+                context! { site => site_ctx.clone(), current => self.current(site, "/"), page => ser(&home), recent => ser(&recent) },
             )
             .context("rendering home page")?;
         out.push(OutputFile {
@@ -246,7 +270,7 @@ impl Renderer {
             .render(
                 &[format!("{}/taxonomy.html", t.name), "taxonomy.html".to_string()],
                 context! {
-                    site => site_ctx.clone(),
+                    site => site_ctx.clone(), current => self.current(site, &t.url),
                     page => ser(&page),
                     taxonomy => context! { name => &t.name, title => &t.title, url => &t.url, terms => ser(&terms) },
                 },
@@ -274,7 +298,7 @@ impl Renderer {
                     .render(
                         &[format!("{}/term.html", t.name), "term.html".to_string()],
                         context! {
-                            site => site_ctx.clone(),
+                            site => site_ctx.clone(), current => self.current(site, &pager.url),
                             page => ser(&page),
                             taxonomy => taxonomy.clone(),
                             term => ser(&term_ctx(term)),
@@ -288,6 +312,26 @@ impl Renderer {
                 })
             })
             .collect()
+    }
+
+    /// The page being rendered, whether or not it has a content file:
+    /// `url`, `permalink`, `markdown_url` (its agent-readable copy; the first
+    /// page's for paginated lists) and `card`.
+    fn current(&self, site: &Site, url: &str) -> Value {
+        let first = match url.find("page/") {
+            Some(i) => &url[..i],
+            None => url,
+        };
+        context! {
+            url => url,
+            permalink => site.config.permalink(url),
+            markdown_url => crate::agents::md_url(site, first),
+            card => site
+                .config
+                .cards
+                .enabled
+                .then(|| site.config.permalink(&crate::cards::card_path(first))),
+        }
     }
 
     fn render(&self, names: &[String], ctx: Value) -> Result<String> {
@@ -321,7 +365,7 @@ fn collect_templates(
             collect_templates(root, &path, out)?;
         } else if path
             .extension()
-            .is_some_and(|e| e == "html" || e == "xml" || e == "txt")
+            .is_some_and(|e| e == "html" || e == "xml" || e == "txt" || e == "md")
         {
             let name = path
                 .strip_prefix(root)
@@ -348,6 +392,12 @@ fn page_ctx<'a>(site: &'a Site, e: &'a Entry, with_content: bool) -> PageCtx<'a>
         title: e.title(),
         url: &e.page.url,
         permalink: site.config.permalink(&e.page.url),
+        markdown_url: crate::agents::md_url(site, &e.page.url),
+        card: site
+            .config
+            .cards
+            .enabled
+            .then(|| site.config.permalink(&crate::cards::card_path(&e.page.url))),
         section: &e.page.section,
         date: e.page.fm.date.map(|d| d.to_rfc3339()),
         lastmod: e.page.fm.lastmod.or(e.page.fm.date).map(|d| d.to_rfc3339()),

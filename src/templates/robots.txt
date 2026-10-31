@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
-
+{% if site.content_signal %}Content-Signal: {{ site.content_signal }}
+{% endif %}
 Sitemap: {{ absurl("sitemap.xml") }}

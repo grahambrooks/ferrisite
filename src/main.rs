@@ -29,6 +29,34 @@ enum Command {
         #[arg(long)]
         future: bool,
     },
+    /// Check a built site: internal links, and with --agents the agent-readable output.
+    Check {
+        /// The built site to check.
+        #[arg(default_value = "public")]
+        out: PathBuf,
+        /// Site root, for the base URL in ferrisite.toml.
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
+        /// Also check Markdown copies, alternate links and llms.txt.
+        #[arg(long)]
+        agents: bool,
+        /// How many problems to print.
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
+    /// Build, serve on localhost and rebuild on change (drafts included).
+    Serve {
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
+        /// Output directory (emptied first, but only if ferrisite created it).
+        #[arg(long, default_value = ".ferrisite-serve")]
+        out: PathBuf,
+        #[arg(long, default_value_t = 1313)]
+        port: u16,
+        /// Leave drafts and future-dated pages out.
+        #[arg(long)]
+        no_drafts: bool,
+    },
     /// Compare two built sites: URL sets, internal links and feed items.
     Parity {
         /// The reference build (for example Hugo's public/).
@@ -58,6 +86,7 @@ fn main() -> Result<()> {
                 out: out.clone(),
                 drafts,
                 future,
+                base_url: None,
             })?;
             println!(
                 "Built {} pages, {} list pages, {} files (+{} static) into {} in {} ms",
@@ -77,6 +106,41 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
+        Command::Check {
+            out,
+            root,
+            agents,
+            limit,
+        } => {
+            let config = ferrisite::config::Config::load(&root)?;
+            let report =
+                ferrisite::check::run(&out, &config.base_url, agents, &config.check.known_broken)?;
+            println!("{} internal links checked", report.links_checked);
+            for (name, list) in [
+                ("broken links", &report.broken_links),
+                (
+                    "known broken links (accepted in ferrisite.toml)",
+                    &report.known_broken,
+                ),
+                ("agent-readable output problems", &report.agent_problems),
+            ] {
+                println!("{}: {}", name, list.len());
+                for p in list.iter().take(limit) {
+                    println!("  {p}");
+                }
+            }
+            if report.failed() {
+                bail!("check failed");
+            }
+            println!("check ok");
+            Ok(())
+        }
+        Command::Serve {
+            root,
+            out,
+            port,
+            no_drafts,
+        } => ferrisite::serve::serve(root, out, port, !no_drafts),
         Command::Parity {
             reference,
             candidate,

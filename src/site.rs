@@ -32,6 +32,10 @@ pub struct Entry {
     pub headings: Vec<Heading>,
     pub word_count: usize,
     pub reading_time: usize,
+    /// The page as Markdown for agents (DESIGN.md section 9.1): the source
+    /// with shortcodes expanded to Markdown and root-relative links made
+    /// absolute. Diagrams stay as their source fences.
+    pub markdown: String,
 }
 
 impl Entry {
@@ -136,6 +140,7 @@ pub struct Brief {
 }
 
 pub struct Index {
+    pub base_url: String,
     pub briefs: Vec<Brief>,
     /// Section name → its HTML list, as briefs (for `recent-posts`-style shortcodes).
     pub lists: BTreeMap<String, Vec<Brief>>,
@@ -268,6 +273,7 @@ pub fn resolve(
         })
         .collect();
     let index = Index {
+        base_url: config.base_url.clone(),
         sources: pages.iter().map(|p| p.source.clone()).collect(),
         briefs,
         lists,
@@ -522,7 +528,21 @@ fn render_entry(page: Page, me: usize, env: &RenderEnv) -> Result<Entry> {
     } else {
         text::auto_summary(&rendered.html, summary_length)
     };
+    let markdown = match page.format {
+        Format::Markdown => {
+            let md = MarkdownExpander { inner: &expander };
+            let nodes = markup::shortcodes::parse_with_offset(&page.body, page.body_line - 1)?;
+            absolutize_markdown(
+                &markup::shortcodes::expand_inline(&nodes, &md)?,
+                &index.base_url,
+            )
+        }
+        // No AsciiDoc-to-Markdown converter exists yet; agents read AsciiDoc
+        // well, so the copy carries the source in a fenced block.
+        Format::AsciiDoc => format!("```asciidoc\n{}\n```\n", page.body.trim_end()),
+    };
     Ok(Entry {
+        markdown,
         reading_time: text::reading_time(word_count),
         word_count,
         summary,
@@ -539,6 +559,66 @@ struct PageExpander<'a> {
     index: &'a Index,
     renderer: &'a Renderer,
     me: usize,
+}
+
+/// Shortcodes for the Markdown copy: `ref`/`relref` resolve as in HTML,
+/// `highlight` becomes a fenced block, `shortcodes/<name>.md` templates are
+/// used when the site has them; otherwise a paired shortcode keeps its inner
+/// Markdown and a standalone one is dropped.
+struct MarkdownExpander<'a> {
+    inner: &'a PageExpander<'a>,
+}
+
+impl Expand for MarkdownExpander<'_> {
+    fn expand(&self, call: &Call, inner: Option<&str>) -> Result<String> {
+        match call.name.as_str() {
+            "ref" | "relref" => self.inner.expand(call, inner),
+            "highlight" => {
+                let lang = call.args.first().map(String::as_str).unwrap_or("");
+                let code = inner.unwrap_or("").trim_matches('\n');
+                Ok(format!("```{lang}\n{code}\n```\n"))
+            }
+            name => {
+                let me = &self.inner.index.briefs[self.inner.me];
+                if let Some(md) = self.inner.renderer.render_shortcode_as(
+                    name,
+                    "md",
+                    &call.args,
+                    inner,
+                    me,
+                    &self.inner.index.lists,
+                )? {
+                    return Ok(md);
+                }
+                Ok(inner.unwrap_or("").to_string())
+            }
+        }
+    }
+}
+
+/// Root-relative Markdown and HTML links become absolute.
+fn absolutize_markdown(md: &str, base: &str) -> String {
+    let base = base.trim_end_matches('/');
+    let mut out = String::with_capacity(md.len());
+    let mut rest = md;
+    while let Some(i) = rest.find("](/").into_iter().chain(rest.find("=\"/")).min() {
+        let (prefix, marker) = if rest[i..].starts_with("](/") {
+            ("](", 2)
+        } else {
+            ("=\"", 2)
+        };
+        out.push_str(&rest[..i]);
+        let after = &rest[i + marker..];
+        if after.starts_with("//") {
+            out.push_str(prefix);
+        } else {
+            out.push_str(prefix);
+            out.push_str(base);
+        }
+        rest = after;
+    }
+    out.push_str(rest);
+    out
 }
 
 impl Expand for PageExpander<'_> {
@@ -713,6 +793,15 @@ mod tests {
         assert_eq!(
             go_title("Software development with AI"),
             "Software Development With AI"
+        );
+    }
+
+    #[test]
+    fn markdown_links_become_absolute() {
+        let md = "[a](/post/x/) ![i](/images/y.png) <img src=\"/images/z.svg\"> [ext](https://e.com/) [p](//cdn/x)";
+        assert_eq!(
+            absolutize_markdown(md, "https://www.e.com/"),
+            "[a](https://www.e.com/post/x/) ![i](https://www.e.com/images/y.png) <img src=\"https://www.e.com/images/z.svg\"> [ext](https://e.com/) [p](//cdn/x)"
         );
     }
 

@@ -16,6 +16,7 @@ fn build_into(out: &Path, drafts: bool) -> ferrisite::build::Report {
         out: out.to_path_buf(),
         drafts,
         future: false,
+        base_url: None,
     })
     .expect("build")
 }
@@ -144,6 +145,7 @@ fn unknown_shortcode_fails_with_file_and_line() {
         out: dir.path().join("out"),
         drafts: false,
         future: false,
+        base_url: None,
     })
     .err()
     .expect("unknown shortcode must fail");
@@ -211,6 +213,7 @@ fn refuses_to_clean_a_foreign_directory() {
         out: out.clone(),
         drafts: false,
         future: false,
+        base_url: None,
     })
     .err()
     .expect("should refuse");
@@ -270,6 +273,7 @@ fn diagrams_highlighting_and_asciidoc() {
         out: out.clone(),
         drafts: false,
         future: false,
+        base_url: None,
     })
     .expect("build");
     let md = read(&out, "post/md/index.html");
@@ -300,6 +304,7 @@ fn broken_diagram_fails_with_file_and_line() {
         out: dir.path().join("out"),
         drafts: false,
         future: false,
+        base_url: None,
     })
     .err()
     .expect("an unsupported diagram must fail the build");
@@ -308,4 +313,82 @@ fn broken_diagram_fails_with_file_and_line() {
         msg.contains("post/bad.md") && msg.contains("line 7:") && msg.contains("mermaid"),
         "{msg}"
     );
+}
+
+#[test]
+fn agent_readable_output_cards_and_check() {
+    let (dir, root) = temp_site(&[
+        (
+            "content/post/a.md",
+            "---\ntitle: First post\ndate: 2026-01-02\ntags: [rust]\n---\n\nSee [the other](/post/b/).\n\n```mermaid\nflowchart LR\n  A --> B\n```\n",
+        ),
+        (
+            "content/post/b.md",
+            "---\ntitle: Second\ndate: 2026-01-01\n---\n\nHello.\n",
+        ),
+    ]);
+    std::fs::write(
+        root.join("ferrisite.toml"),
+        "base_url = \"https://e.test\"\ntitle = \"T\"\ntaxonomies = [\"tags\"]\n[cards]\nenabled = true\n[agents]\nrecent_section = \"post\"\n",
+    )
+    .unwrap();
+    let out = dir.path().join("out");
+    build(&Options {
+        root: root.clone(),
+        out: out.clone(),
+        drafts: false,
+        future: false,
+        base_url: None,
+    })
+    .expect("build");
+    let md = read(&out, "post/a/index.md");
+    assert!(
+        md.starts_with("---\ntitle: First post\nurl: https://e.test/post/a/\n"),
+        "{md}"
+    );
+    assert!(
+        md.contains("[the other](https://e.test/post/b/)"),
+        "links made absolute"
+    );
+    assert!(
+        md.contains("```mermaid\nflowchart LR"),
+        "diagram kept as source"
+    );
+    let llms = read(&out, "llms.txt");
+    assert!(llms.starts_with("# T\n"));
+    assert!(llms.contains("(https://e.test/post/a/index.md)"));
+    assert!(
+        out.join("llms-full.txt").exists()
+            && out.join("atom.xml").exists()
+            && out.join("feed.json").exists()
+    );
+    let html = read(&out, "tags/rust/index.html");
+    assert!(html.contains(
+        "<link rel=\"alternate\" type=\"text/markdown\" href=\"https://e.test/tags/rust/index.md\">"
+    ));
+    let png = std::fs::read(out.join("images/cards/post-a.png")).unwrap();
+    assert_eq!(&png[..4], b"\x89PNG");
+
+    let report = ferrisite::check::run(&out, "https://e.test/", true, &[]).unwrap();
+    assert!(
+        !report.failed(),
+        "{:?} {:?}",
+        report.broken_links,
+        report.agent_problems
+    );
+
+    // An unlisted broken link fails `check`; listing it with a reason passes.
+    std::fs::write(
+        out.join("post/b/index.html"),
+        "<a href=\"/missing/\">x</a><link rel=\"alternate\" type=\"text/markdown\" href=\"https://e.test/post/b/index.md\">",
+    )
+    .unwrap();
+    let report = ferrisite::check::run(&out, "https://e.test/", false, &[]).unwrap();
+    assert_eq!(report.broken_links.len(), 1);
+    let known = [ferrisite::config::KnownBroken {
+        link: "/missing/".into(),
+        reason: "test".into(),
+    }];
+    let report = ferrisite::check::run(&out, "https://e.test/", false, &known).unwrap();
+    assert!(!report.failed() && report.known_broken.len() == 1);
 }

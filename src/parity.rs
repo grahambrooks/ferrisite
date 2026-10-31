@@ -302,7 +302,7 @@ pub fn compare(reference: &Path, candidate: &Path, cfg: &ParityConfig) -> Result
     Ok(r)
 }
 
-fn broken_links(
+pub fn broken_links(
     root: &Path,
     files: &[String],
     base_url: &str,
@@ -344,7 +344,7 @@ fn read(root: &Path, rel: &str) -> Result<String> {
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
-fn list_files(root: &Path) -> Result<Vec<String>> {
+pub fn list_files(root: &Path) -> Result<Vec<String>> {
     fn walk(root: &Path, dir: &Path, out: &mut Vec<String>) -> Result<()> {
         for e in std::fs::read_dir(dir).with_context(|| format!("reading {}", dir.display()))? {
             let p = e?.path();

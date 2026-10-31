@@ -12,7 +12,8 @@ use std::path::{Path, PathBuf};
 
 /// Written into every output directory ferrisite creates. A non-empty
 /// directory without it is never cleaned, so a mistyped `--out` can't wipe
-/// something else.
+/// something else. It lists the generated (non-static) files, one per line,
+/// so `check` can tell pages from copied static files.
 pub const MARKER: &str = ".ferrisite-output";
 
 pub struct Options {
@@ -20,6 +21,8 @@ pub struct Options {
     pub out: PathBuf,
     pub drafts: bool,
     pub future: bool,
+    /// Overrides `base_url` from ferrisite.toml (e.g. localhost for `serve`).
+    pub base_url: Option<String>,
 }
 
 pub struct Report {
@@ -31,7 +34,14 @@ pub struct Report {
 }
 
 pub fn build(opts: &Options) -> Result<Report> {
-    let config = Config::load(&opts.root)?;
+    let mut config = Config::load(&opts.root)?;
+    if let Some(base) = &opts.base_url {
+        config.base_url = if base.ends_with('/') {
+            base.clone()
+        } else {
+            format!("{base}/")
+        };
+    }
     let found = content::discover(&opts.root.join("content"), &config.taxonomies)?;
     let ignored = found.ignored.clone();
     let vis = Visibility {
@@ -55,6 +65,7 @@ pub fn build(opts: &Options) -> Result<Report> {
     let site = site::resolve(config, &opts.root, found, vis, &renderer, &diagrams)?;
     let mut files = renderer.render_site(&site)?;
     files.extend(output::all(&site));
+    files.extend(crate::agents::all(&site));
     files.push(stylesheet);
     files.sort_by(|a, b| a.path.cmp(&b.path));
     if let Some(w) = files.windows(2).find(|w| w[0].path == w[1].path) {
@@ -83,7 +94,12 @@ pub fn build(opts: &Options) -> Result<Report> {
         );
     }
     write_files(&opts.out, &files)?;
-    Ok(report(&site, &files, static_paths.len(), ignored))
+    let manifest: String = files.iter().map(|f| format!("{}\n", f.path)).collect();
+    std::fs::write(opts.out.join(MARKER), manifest)?;
+    let cards = write_cards(&site, &opts.root, &opts.out, &static_paths, &files)?;
+    let mut report = report(&site, &files, static_paths.len(), ignored);
+    report.files += cards;
+    Ok(report)
 }
 
 fn report(site: &Site, files: &[OutputFile], static_files: usize, ignored: Vec<String>) -> Report {
@@ -152,6 +168,66 @@ fn write_files(out: &Path, files: &[OutputFile]) -> Result<()> {
             .with_context(|| format!("writing {}", path.display()))?;
     }
     Ok(())
+}
+
+/// Social cards for every page URL, rendered in parallel. Returns the count.
+fn write_cards(
+    site: &Site,
+    root: &Path,
+    out: &Path,
+    static_paths: &[String],
+    files: &[OutputFile],
+) -> Result<usize> {
+    use rayon::prelude::*;
+    if !site.config.cards.enabled {
+        return Ok(0);
+    }
+    let cards = crate::cards::Cards::new(&site.config.cards, root)?;
+    let author = site.config.author.clone().unwrap_or_default();
+    let mut jobs: Vec<(String, String, String)> = Vec::new();
+    for e in &site.entries {
+        let byline = match (e.page.kind, e.date()) {
+            (content::Kind::Page, Some(d)) => format!("{author}  ·  {}", d.format("%-d %B %Y")),
+            _ => author.clone(),
+        };
+        let title = if e.page.kind == content::Kind::Home || e.title().is_empty() {
+            site.config.title.clone()
+        } else {
+            e.title().to_string()
+        };
+        jobs.push((e.page.url.clone(), title, byline));
+    }
+    for s in site.sections.iter().filter(|s| s.index.is_none()) {
+        jobs.push((s.url.clone(), s.title.clone(), author.clone()));
+    }
+    for t in &site.taxonomies {
+        if t.index.is_none() {
+            jobs.push((t.url.clone(), t.title.clone(), author.clone()));
+        }
+        for term in t.terms.iter().filter(|t| t.index.is_none()) {
+            jobs.push((term.url.clone(), term.title.clone(), author.clone()));
+        }
+    }
+    jobs.sort();
+    jobs.dedup_by(|a, b| a.0 == b.0);
+    let rendered: Vec<(String, Vec<u8>)> = jobs
+        .par_iter()
+        .map(|(url, title, byline)| {
+            let png = cards
+                .render(title, byline)
+                .with_context(|| format!("social card for {url}"))?;
+            Ok((crate::cards::card_path(url), png))
+        })
+        .collect::<Result<_>>()?;
+    for (path, png) in &rendered {
+        if static_paths.binary_search(path).is_ok() || files.iter().any(|f| &f.path == path) {
+            bail!("social card {path} would overwrite another file");
+        }
+        let full = out.join(path);
+        std::fs::create_dir_all(full.parent().expect("card dir"))?;
+        std::fs::write(&full, png).with_context(|| format!("writing {path}"))?;
+    }
+    Ok(rendered.len())
 }
 
 /// Copy a static directory verbatim to the output root, recording the
