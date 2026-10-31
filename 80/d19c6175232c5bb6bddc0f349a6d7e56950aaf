@@ -1,0 +1,107 @@
+src/render.rs
+  s_38439ae326f7ae::t_dc85e2c2767156 1-95,97-124,126-141,143-144,147,149-167,169-184,187-192,194-336
+  s_38439ae326f7ae::t_65064272753d86 185-186
+  s_38439ae326f7ae::t_199889371504d8 96
+  s_38439ae326f7ae::t_c7d5578c28ad17 125
+  s_38439ae326f7ae::t_6802efaf67f675 142
+  s_38439ae326f7ae::t_0afec9fda7c500 145-146
+  s_38439ae326f7ae::t_a305c164932279 148
+  s_38439ae326f7ae::t_0a2b8840af04b0 168
+  s_38439ae326f7ae::t_b0de38a9469de6 193
+src/markup/text.rs
+  s_38439ae326f7ae::t_6963a1d25470e4 1-127
+  s_38439ae326f7ae::t_e86511af76a748 128-133
+src/build.rs
+  s_38439ae326f7ae::t_368ee6f832e111 1-127
+  s_38439ae326f7ae::t_416876b493ba56 128
+src/markup/anchor.rs
+  s_38439ae326f7ae::t_8bdd1f3f1142b8 1-63
+  s_38439ae326f7ae::t_31c27ab9df075a 64-69
+TEMPLATES.md
+  s_38439ae326f7ae::t_1901cc15fe22c4 1-58
+src/markup/mod.rs
+  s_38439ae326f7ae::t_3c930142c7a3a5 1-104
+  s_38439ae326f7ae::t_84eb46fbb9d592 105-109
+src/config.rs
+  s_38439ae326f7ae::t_f8c304c033541a 1-94
+src/content/mod.rs
+  s_38439ae326f7ae::t_26a081ee58b754 1-174
+src/content/frontmatter.rs
+  s_38439ae326f7ae::t_8cdf64cb1d4be2 1-188
+  s_38439ae326f7ae::t_a6291be00b35e7 189-191
+src/site.rs
+  s_38439ae326f7ae::t_21ef2471898287 1-218
+  s_38439ae326f7ae::t_b23b5d0190f49c 219-223
+.idea/ferrisite.iml
+  s_38439ae326f7ae::t_6397c8c55ec4a5 1-12
+Cargo.lock
+  s_38439ae326f7ae::t_79f4f17ce56629 5-13,70-124,156,171-269,275,277-320,323-339,346-379,386-454,461-505,524-656,663-673,685-768,775-789,796-874,881-898,907-912
+Cargo.toml
+  s_38439ae326f7ae::t_f3bb9c0b4feb6e 12,14-23
+DESIGN.md
+  s_38439ae326f7ae::t_6a1504b75bbb34 3-14,126-129
+src/lib.rs
+  s_38439ae326f7ae::t_c5f1cae64cc48a 1-8
+src/main.rs
+  s_38439ae326f7ae::t_4cee6905260aae 1,6,22,25-30,43-73
+src/templates/base.html
+  s_38439ae326f7ae::t_5755b6e12954d3 1-16
+src/templates/home.html
+  s_38439ae326f7ae::t_0a6b9101ac8ff0 1-7
+src/templates/list.html
+  s_38439ae326f7ae::t_b7b0a489af0e21 1-17
+src/templates/page.html
+  s_38439ae326f7ae::t_d9d635d8a40138 1-6
+src/templates/single.html
+  s_38439ae326f7ae::t_3af8932118f38d 1-9
+tests/build.rs
+  s_38439ae326f7ae::t_153f6c863da8fb 1-126
+tests/fixtures/hugo_heading_ids.json
+  s_38439ae326f7ae::t_a6a0dbae2ac43f 1-1774
+tests/fixtures/site/content/_index.md
+  s_38439ae326f7ae::t_c7457e93504d3a 1-5
+tests/fixtures/site/content/about.md
+  s_38439ae326f7ae::t_98020de4b2be57 1-5
+tests/fixtures/site/content/post/_index.md
+  s_38439ae326f7ae::t_f77acb00bc79a8 1-3
+tests/fixtures/site/content/post/draft.md
+  s_38439ae326f7ae::t_a8b17c692ea074 1-6
+tests/fixtures/site/content/post/future.md
+  s_38439ae326f7ae::t_e59541e33fd82d 1-5
+tests/fixtures/site/content/post/post-1.md
+  s_38439ae326f7ae::t_4fe2632d9426cf 1-10
+tests/fixtures/site/content/post/post-2.md
+  s_38439ae326f7ae::t_7d2a1e79405f1f 1-10
+tests/fixtures/site/content/post/post-3.md
+  s_38439ae326f7ae::t_b1d72d22642883 1-10
+tests/fixtures/site/content/tags/rust/_index.md
+  s_38439ae326f7ae::t_3f313801960340 1-3
+tests/fixtures/site/ferrisite.toml
+  s_38439ae326f7ae::t_9cae13723ddc6e 1-6
+tests/fixtures/site/static/css/site.css
+  s_38439ae326f7ae::t_e5351f0cca3d39 1
+tests/heading_ids.rs
+  s_38439ae326f7ae::t_c98330a350cda5 1-41
+.idea/.gitignore
+  s_38439ae326f7ae::t_1fce8c2a92b0ce 1-10
+.idea/modules.xml
+  s_38439ae326f7ae::t_83896ba9a7e73f 1-8
+.idea/vcs.xml
+  s_38439ae326f7ae::t_8354001013c755 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "80d19c6175232c5bb6bddc0f349a6d7e56950aaf",
+  "prompts": {},
+  "sessions": {
+    "s_38439ae326f7ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e88d1d-b3bb-451e-9770-aa1214b3f499",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Graham Brooks <graham@grahambrooks.com>"
+    }
+  }
+}
