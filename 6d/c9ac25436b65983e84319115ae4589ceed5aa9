@@ -1,0 +1,21 @@
+Cargo.lock
+  s_f51cf84a6babe9::t_0bd9d9d7fc678e 39
+Cargo.toml
+  s_f51cf84a6babe9::t_234c8abfa5457b 29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6dc9ac25436b65983e84319115ae4589ceed5aa9",
+  "prompts": {},
+  "sessions": {
+    "s_f51cf84a6babe9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_f51cf84a6babe9",
+        "model": "unknown"
+      },
+      "human_author": "Graham Brooks <graham@grahambrooks.com>"
+    }
+  }
+}
