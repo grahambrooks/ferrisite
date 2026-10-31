@@ -1,6 +1,6 @@
 # ferrisite design
 
-Status: **M0 draft, 2026-10-31.** Nothing beyond a CLI shell is implemented.
+Status: **M0, 2026-10-31.** Open questions O1–O3, O5 and O6 decided (section 14); O4 still open. Nothing beyond a CLI shell is implemented.
 
 ferrisite is a pure-Rust static site generator for one known site first,
 www.grahambrooks.com, currently built with Hugo 0.169 from
@@ -156,13 +156,17 @@ All four meet at `diagram-scene`. Output is inline SVG with real `<text>`
 **Failure is fatal** (decision C): a parse error fails the build with the
 library's message, file and line. There is no client-side fallback.
 
-**Dark mode (open question O2).** `diagram-scene` themes are fixed palettes
-(`Theme::light()`, `Theme::dark()`), but the site switches theme with a
-`data-mode` attribute, not only `prefers-color-scheme`. Options:
-(a) render both and show one with CSS on `html[data-mode]`, which doubles
-diagram bytes; (b) add a CSS-variable output mode to `diagram-scene`'s SVG
-writer (`fill="var(--ds-text, #1a1a2e)"` per role), so one SVG follows the
-page theme. (b) is better for every consumer, but it's an upstream change.
+**Dark mode (decided, O2).** `diagram-scene` themes are fixed palettes
+(`Theme::light()`, `Theme::dark()`), and the site switches theme with a
+`data-mode` attribute on `<html>` as well as `prefers-color-scheme`. Each
+diagram is therefore rendered **twice**, once per palette, into
+`<div class="diagram diagram-light">` and `<div class="diagram diagram-dark">`.
+CSS shows the one matching `html[data-mode]`, falling back to
+`prefers-color-scheme` when the mode is `auto`. This costs roughly double the
+diagram bytes and needs no upstream change. A CSS-variable output mode in
+`diagram-scene`'s SVG writer would halve that later, without changing the
+templates. The Markdown copy (section 9.1) carries the diagram source once,
+not the SVG.
 
 ## 8. Templates and theme
 
@@ -239,9 +243,8 @@ carries JSON-LD into its Markdown output, so it reaches agents either way.
 
 RSS at `/index.xml` and `/rss.xml` (byte-identical, as now), `/essays.xml`,
 plus **Atom** and **JSON Feed** at new URLs. `sitemap.xml` with true
-`lastmod`, taken from frontmatter `lastmod` or else git history. Git history
-needs one shell-free read via `gix`; this is open question O5, since a
-`.git`-less build must still work.
+`lastmod`, taken from frontmatter only: `lastmod` if set, else `date` (decided, O5).
+No git-history reads, so a `.git`-less build behaves identically.
 
 ### 9.6 Host-level settings (documented, not generated)
 
@@ -253,8 +256,9 @@ needs one shell-free read via `gix`; this is open question O5, since a
   matter more.
 - **`Link: <…/index.md>; rel="alternate"; type="text/markdown"`** headers:
   only possible where the host allows custom headers; GitHub Pages doesn't.
-- **Content-Type for `.md`** on DigitalOcean App Platform and GitHub Pages is
-  unverified (open question O3); `text/markdown; charset=utf-8` is the goal.
+- **Content-Type for `.md`**: assumed to be served suitably by the host
+  (decided, O3). `text/markdown; charset=utf-8` is the goal; check it once,
+  after the first deploy that includes `.md` copies.
 
 ### 9.7 Search an agent can use (optional, later)
 
@@ -321,7 +325,7 @@ non-zero on any failure in items 1–4.
 |---|---|---|
 | CLI | `clap` 4 | Portfolio standard. |
 | Errors | `anyhow`, `thiserror` 2; `miette` for source-located diagnostics | `adoc` already uses `miette`. |
-| Frontmatter | YAML crate (O1), `toml` 1 | |
+| Frontmatter | `serde_yaml` 0.9.34 (O1), `toml` 1 | Final release of an unmaintained crate; fine for now. |
 | Markdown | `comrak` 0.56 | As `md2pdf`. |
 | AsciiDoc | `adoc` (git dependency) | |
 | Diagrams | `mmd`, `puml`, `forge-dsl`, `diagram-scene` (git), optionally `draws` | |
@@ -330,22 +334,28 @@ non-zero on any failure in items 1–4.
 | Cards | `resvg`, `rustybuzz` | |
 | Parallelism | `rayon` | Output sorted before writing. |
 | Feeds/XML | `quick-xml` | |
-| Git dates | `gix` (O5) | Optional. |
 | Tests | `insta` | Golden output tests. |
 
-## 14. Open questions
+## 14. Decisions and open questions
 
-- **O1. YAML parser.** The portfolio uses `serde_yaml` 0.9, which has been
-  unmaintained since 2024. Options: accept it for consistency, or use a
-  maintained fork. The decision affects every frontmatter read.
-- **O2. Diagram dark mode.** Render twice, or add CSS-variable output to
-  `diagram-scene` (section 7).
-- **O3. Content-Type for `.md`** on the chosen host (tie-in with the tabled
-  hosting decision E in the site's `PLAN.md`).
-- **O4. Content-Signal values** for robots.txt (section 9.3).
-- **O5. `lastmod` from git history** via `gix`, or frontmatter only.
-- **O6. Keep the Compose look**, with its CSS vendored, or take M4 as a chance
-  to restyle.
+Decided 2026-10-31:
+
+- **O1. YAML parser:** `serde_yaml`, latest (0.9.34, its final release), for
+  consistency with the rest of the portfolio. Revisit if it becomes a problem;
+  frontmatter parsing sits behind one module, so swapping is local.
+- **O2. Diagram dark mode:** render each diagram in both palettes and switch
+  with CSS on `html[data-mode]` (section 7).
+- **O3. Content-Type for `.md`:** assume the host serves it suitably; verify
+  after the first deploy.
+- **O5. `lastmod`:** frontmatter only (`lastmod`, else `date`).
+- **O6. Theme:** keep the Compose look, with its compiled CSS vendored into the
+  site repo.
+
+Still open:
+
+- **O4. Content-Signal values** for robots.txt (section 9.3), for example
+  `search=yes, ai-input=yes, ai-train=no`. Until Graham decides, ferrisite
+  emits no `Content-Signal` line.
 
 ## Sources (agent-readable output review, 2026-10-31)
 
