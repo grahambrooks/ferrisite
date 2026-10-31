@@ -1,0 +1,75 @@
+src/output.rs
+  s_38439ae326f7ae::t_4e4257de9d5dbf 1-353,357,359,364,366,368,372-373
+  s_38439ae326f7ae::t_d163a208f163a8 354-356,358,360-363,365,367,369-371,374-430
+src/markup/shortcodes.rs
+  s_38439ae326f7ae::t_afcf097f81e583 1-302
+  s_38439ae326f7ae::t_1fb9a0fcdc0700 303-312
+src/parity.rs
+  s_38439ae326f7ae::t_447d801417b38f 1-628
+  s_38439ae326f7ae::t_6315ad07a93448 629-716
+src/config.rs
+  s_38439ae326f7ae::t_a0b70c8d2f57bb 5,18-23,26-27,33-55,65-134,151-158,183-186,199,207-227
+  s_38439ae326f7ae::t_fcec602b5a6410 228
+src/site.rs
+  s_38439ae326f7ae::t_0b8c2265b68756 2-8,10-11,13,15-16,19,21,29,42-44,64,67-82,85-102,110-111,114-115,125-190,196-197,199-207,210-211,213-214,219-226,229-264,267-271,273-291,297-309,313-412,415-463,466-469,471-474,478,482,486-535,539-605,607-608,622,624
+  s_38439ae326f7ae::t_50fbd201e12538 606,609-611,614-615,619,623,676-694
+src/render.rs
+  s_38439ae326f7ae::t_b7165f3c581a9b 6-9,13-14,18,27-30,36-42,73-80,83,112-114,119-128,131-152,154-158,166,172,181-183,192,205-210,221,228-235,239-289,301-309,342-343,381-384
+  s_38439ae326f7ae::t_4e4e987b406930 385-386
+Cargo.lock
+  s_38439ae326f7ae::t_756d1561ba10bb 281,422-427,618-630,933-938
+Cargo.toml
+  s_38439ae326f7ae::t_ab64c6a6c735ed 18
+src/build.rs
+  s_38439ae326f7ae::t_567c8ede450321 5,42-48,51-70,72,77-88,143-149,151,154-158,160-161,163-171,174
+src/content/frontmatter.rs
+  s_38439ae326f7ae::t_b26c2779a2d49a 128
+src/content/mod.rs
+  s_38439ae326f7ae::t_53a93fc6bedb34 15-18,64,79-88,109
+src/lib.rs
+  s_38439ae326f7ae::t_09a91b84c34c4d 7-8
+src/main.rs
+  s_38439ae326f7ae::t_268800d338732d 38-43,80-94
+src/markup/mod.rs
+  s_38439ae326f7ae::t_e95e3461678b30 6,83-195,212-246
+src/templates/404.html
+  s_38439ae326f7ae::t_eaebbb1d5d4e44 1-6
+src/templates/robots.txt
+  s_38439ae326f7ae::t_b8286938ea453c 1-4
+src/templates/taxonomy.html
+  s_38439ae326f7ae::t_63d2dbd545581a 1-8
+src/templates/term.html
+  s_38439ae326f7ae::t_10b3dd542430ac 1-17
+tests/build.rs
+  s_38439ae326f7ae::t_d442b2ad69a9d3 64-174
+tests/fixtures/site/content/post/post-1.md
+  s_38439ae326f7ae::t_95625e6dd862d8 4-7
+tests/fixtures/site/content/post/post-2.md
+  s_38439ae326f7ae::t_8d98565e96ba69 4,9-13
+tests/fixtures/site/ferrisite.toml
+  s_38439ae326f7ae::t_81b528504c2cab 4,8-10
+tests/fixtures/site/static/images/d.svg
+  s_38439ae326f7ae::t_f7e95925170826 1
+tests/fixtures/site/templates/shortcodes/note.html
+  s_38439ae326f7ae::t_17d52848205b4e 1
+DESIGN.md
+  s_38439ae326f7ae::t_5a5a89fa0eeeb9 3-38,161-162
+TEMPLATES.md
+  s_38439ae326f7ae::t_334637178a269c 14-15,17-19,28-29,50-55,59-74,80-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51f2b1178c270dda4ce1421a5a809976c0a49608",
+  "prompts": {},
+  "sessions": {
+    "s_38439ae326f7ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e88d1d-b3bb-451e-9770-aa1214b3f499",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Graham Brooks <graham@grahambrooks.com>"
+    }
+  }
+}
