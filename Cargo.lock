@@ -1448,7 +1448,7 @@ dependencies = [
 [[package]]
 name = "puml"
 version = "2026.10.25"
-source = "git+https://github.com/grahambrooks/puml?rev=ca53ae8#ca53ae8f625c94d4eac10574969dfc9af5651b3b"
+source = "git+https://github.com/grahambrooks/puml?rev=4f68789#4f6878951b6b28a1cc6f1f5d94e2afe4fbbaeeab"
 dependencies = [
  "anyhow",
  "clap",
