@@ -1,0 +1,19 @@
+src/parity.rs
+  s_38439ae326f7ae::t_e75caccef85e75 14,48-57,218-225,239-242,454-478,480,483,485,721-730
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e282867c60fe013596d68af8b02810e81550c71",
+  "prompts": {},
+  "sessions": {
+    "s_38439ae326f7ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e88d1d-b3bb-451e-9770-aa1214b3f499",
+        "model": "unknown"
+      },
+      "human_author": "Graham Brooks <graham@grahambrooks.com>"
+    }
+  }
+}
