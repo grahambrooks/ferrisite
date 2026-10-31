@@ -22,7 +22,8 @@ toml = "1"
 
 # Graham's diagram and markup tools, pinned to release tags (DESIGN.md section 7).
 mmd = { git = "https://github.com/grahambrooks/mmd", tag = "v2026.10.25" }
-puml = { git = "https://github.com/grahambrooks/puml", tag = "v2026.10.25" }
+# Pinned by revision for box groups, labelled-relation and skinparam fixes (ca53ae8), unreleased.
+puml = { git = "https://github.com/grahambrooks/puml", rev = "ca53ae8" }
 forge-dsl = { git = "https://github.com/grahambrooks/forge", tag = "v2026.10.25", default-features = false }
 diagram-scene = { git = "https://github.com/grahambrooks/diagram-scene", tag = "v2026.10.25" }
 # Pinned by revision for the include-target attribute fix (945af53), unreleased.

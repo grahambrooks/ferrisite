@@ -1,7 +1,15 @@
 # ferrisite design
 
-Status: **M4 implemented, with grahambrooks.com's templates ported, 2026-10-31;
-one M3 criterion blocked on puml.**
+Status: **M4 done, 2026-10-31; M3's blocked criterion met.** ferrisite renders
+grahambrooks.com through ported templates; whole-page parity with the Hugo
+build passes (254 pages, 0 link differences, 9,672 links checked), `check
+--agents` is clean, and two builds are byte-identical. All 7 event-driven
+architecture AsciiDoc files build with all 14 PlantUML diagrams, using
+`puml` at ca53ae8 (box groups, labelled relations, skinparam and autonumber
+fixes) and `adoc` at 945af53 (attributes in include targets), both pinned by
+revision until they're released. Highlighted code uses Hugo/Chroma's markup
+(`div.highlight > pre.chroma > code[data-lang]`) so the theme's code
+decorations apply. Next: M5, switching the deploy to ferrisite.
 
 **Template port (section 8), 2026-10-31:** grahambrooks.com's Hugo layouts
 and the Compose theme partials they use are minijinja templates in the site's

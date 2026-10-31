@@ -279,7 +279,9 @@ fn diagrams_highlighting_and_asciidoc() {
     let md = read(&out, "post/md/index.html");
     assert_eq!(md.matches("<svg").count(), 2, "mermaid in light and dark");
     assert!(md.contains("class=\"diagram diagram-mermaid\"") && md.contains("Start"));
-    assert!(md.contains("<pre class=\"highlight\"><code class=\"language-rust\">"));
+    assert!(md.contains(
+        "<div class=\"highlight\"><pre tabindex=\"0\" class=\"chroma\"><code class=\"language-rust\" data-lang=\"rust\">"
+    ));
     assert!(md.contains("class=\"sx-"), "highlighted spans");
     let doc = read(&out, "post/doc/index.html");
     assert!(doc.contains("class=\"diagram diagram-plantuml\"") && doc.contains("Alice"));

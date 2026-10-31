@@ -103,7 +103,7 @@ impl SyntaxHighlighterAdapter for Highlighter {
         output: &mut dyn fmt::Write,
         _attributes: HashMap<&'static str, Cow<'_, str>>,
     ) -> fmt::Result {
-        output.write_str("<pre class=\"highlight\">")
+        output.write_str(highlight::OPEN)
     }
 
     fn write_code_tag(
@@ -111,10 +111,10 @@ impl SyntaxHighlighterAdapter for Highlighter {
         output: &mut dyn fmt::Write,
         attributes: HashMap<&'static str, Cow<'_, str>>,
     ) -> fmt::Result {
-        match attributes.get("class") {
-            Some(class) => write!(output, "<code class=\"{}\">", highlight::escape(class)),
-            None => output.write_str("<code>"),
-        }
+        let lang = attributes
+            .get("class")
+            .and_then(|c| c.strip_prefix("language-").map(str::to_string));
+        output.write_str(&highlight::code_tag(lang.as_deref()))
     }
 }
 
@@ -260,7 +260,8 @@ pub fn markdown_with(
             }
         }
     }
-    let html = markdown_to_html_with_plugins(source, &options, &plugins);
+    let html =
+        highlight::close_wrappers(&markdown_to_html_with_plugins(source, &options, &plugins));
     let errors = errors.into_inner().expect("diagram errors");
     if !errors.is_empty() {
         anyhow::bail!("{}", errors.join("\n"));

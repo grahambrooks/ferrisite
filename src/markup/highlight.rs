@@ -48,7 +48,8 @@ pub fn spans(lang: &str, code: &str) -> Option<String> {
     Some(generator.finalize())
 }
 
-/// A complete highlighted block: `<pre class="highlight"><code class="language-x">…</code></pre>`.
+/// A complete highlighted block, in Hugo/Chroma's markup:
+/// `<div class="highlight"><pre class="chroma"><code class="language-x" data-lang="x">…`.
 pub fn block(lang: &str, code: &str) -> String {
     let inner = if lang.is_empty() {
         None
@@ -56,12 +57,48 @@ pub fn block(lang: &str, code: &str) -> String {
         spans(lang, code)
     };
     let inner = inner.unwrap_or_else(|| escape(code));
-    let class = if lang.is_empty() {
-        String::new()
-    } else {
-        format!(" class=\"language-{}\"", escape(lang))
-    };
-    format!("<pre class=\"highlight\"><code{class}>{inner}</code></pre>\n")
+    format!(
+        "{OPEN}{}{inner}</code></pre></div>\n",
+        code_tag(if lang.is_empty() { None } else { Some(lang) })
+    )
+}
+
+/// Opening markup of a highlighted block, matching Hugo/Chroma's
+/// (`<div class="highlight"><pre class="chroma">`) so themes that decorate
+/// code blocks (language label, copy button) recognise ferrisite's output.
+pub const OPEN: &str = "<div class=\"highlight\"><pre tabindex=\"0\" class=\"chroma\">";
+
+/// `<code class="language-x" data-lang="x">`, as Hugo writes it.
+pub fn code_tag(lang: Option<&str>) -> String {
+    match lang {
+        Some(l) => {
+            let l = escape(l);
+            format!("<code class=\"language-{l}\" data-lang=\"{l}\">")
+        }
+        None => "<code>".to_string(),
+    }
+}
+
+/// comrak writes a block's closing `</code></pre>` itself; add the wrapper's
+/// `</div>` after the first one following each block ferrisite opened (raw
+/// HTML `<pre>` in the source is left alone).
+pub fn close_wrappers(html: &str) -> String {
+    let mut out = String::with_capacity(html.len() + 64);
+    let mut rest = html;
+    while let Some(i) = rest.find(OPEN) {
+        let after = i + OPEN.len();
+        let Some(close) = rest[after..].find("</code></pre>") else {
+            break;
+        };
+        let end = after + close + "</code></pre>".len();
+        out.push_str(&rest[..end]);
+        if !rest[end..].starts_with("</div>") {
+            out.push_str("</div>");
+        }
+        rest = &rest[end..];
+    }
+    out.push_str(rest);
+    out
 }
 
 pub fn escape(s: &str) -> String {
@@ -127,7 +164,10 @@ mod tests {
     #[test]
     fn highlights_known_languages_with_prefixed_classes() {
         let html = block("rust", "fn main() { let x = 1; }\n");
-        assert!(html.starts_with("<pre class=\"highlight\"><code class=\"language-rust\">"));
+        assert!(html.starts_with(
+            "<div class=\"highlight\"><pre tabindex=\"0\" class=\"chroma\"><code class=\"language-rust\" data-lang=\"rust\">"
+        ));
+        assert!(html.ends_with("</code></pre></div>\n"));
         assert!(html.contains("class=\"sx-"), "{html}");
         assert!(html.contains("main"));
     }
@@ -137,7 +177,26 @@ mod tests {
         let html = block("nosuchlang", "a < b\n");
         assert_eq!(
             html,
-            "<pre class=\"highlight\"><code class=\"language-nosuchlang\">a &lt; b\n</code></pre>\n"
+            "<div class=\"highlight\"><pre tabindex=\"0\" class=\"chroma\"><code class=\"language-nosuchlang\" data-lang=\"nosuchlang\">a &lt; b\n</code></pre></div>\n"
+        );
+    }
+
+    #[test]
+    fn wrappers_close_after_their_own_block_only() {
+        let html = format!(
+            "{OPEN}<code>a</code></pre>\n<pre><code>raw</code></pre>\n{OPEN}<code>b</code></pre>"
+        );
+        assert_eq!(
+            close_wrappers(&html),
+            format!(
+                "{OPEN}<code>a</code></pre></div>\n<pre><code>raw</code></pre>\n{OPEN}<code>b</code></pre></div>"
+            )
+        );
+        let done = block("rust", "x\n");
+        assert_eq!(
+            close_wrappers(&done),
+            done,
+            "already closed blocks stay as they are"
         );
     }
 
