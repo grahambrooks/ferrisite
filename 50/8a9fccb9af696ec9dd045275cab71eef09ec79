@@ -1,0 +1,53 @@
+src/markup/highlight.rs
+  s_38439ae326f7ae::t_ee389ba7b8b8b6 1-158
+src/diagrams.rs
+  s_38439ae326f7ae::t_0d7b5fc6ef1cf2 1-263
+  s_38439ae326f7ae::t_361dd350d699a4 264-274
+src/markup/asciidoc.rs
+  s_38439ae326f7ae::t_d1844d5bb12163 1-219
+  s_38439ae326f7ae::t_fe9d285a1d209e 220-314
+Cargo.toml
+  s_38439ae326f7ae::t_cce38b2d0cab71 23-32
+DESIGN.md
+  s_38439ae326f7ae::t_ab6a4ae886e7d5 3-40
+TEMPLATES.md
+  s_38439ae326f7ae::t_6120d8b62323a0 29-31
+src/build.rs
+  s_38439ae326f7ae::t_c18b57eb8356a9 5,43-55,58
+src/config.rs
+  s_38439ae326f7ae::t_254d718c5c7d97 101,112-153
+src/content/mod.rs
+  s_38439ae326f7ae::t_38fe014f2e4a7b 24,38-39,74,97,103
+src/lib.rs
+  s_38439ae326f7ae::t_631660aedac2d8 6
+src/markup/mod.rs
+  s_38439ae326f7ae::t_5ac09bba78a0d7 6-7,11,13-15,19-20,23,79-200,202-219,224-240,243-257,259-262,264,272,274-276
+src/markup/shortcodes.rs
+  s_38439ae326f7ae::t_8326def7cc168b 29-34,36,39-40,43-48,61,91,188-193,285,305
+src/render.rs
+  s_38439ae326f7ae::t_e703883e8b8761 43-44,129
+src/site.rs
+  s_38439ae326f7ae::t_6a9a40467b70d2 12-14,190,282-290,296,456-462,464-492,498-503,510-513,518,565
+src/templates/base.html
+  s_38439ae326f7ae::t_78d6d8d94646c2 7
+tests/build.rs
+  s_38439ae326f7ae::t_acea8f8f7e8586 152,237-311
+Cargo.lock
+  s_38439ae326f7ae::t_8d486a1f22a4be 5-62,128-139,146-199,206-214,221-249,350-355,362-388,414-467,496-515,522-530,552,554,558-559,561-562,567,585-647,683-700,713-721,747-748,750,752-757,761-762,764-772,775-776,778,780-785,789-790,792,795-796,798-809,812-813,815-826,829-830,832,835-836,838-1067,1078-1174,1184-1211,1224-1291,1331-1336,1343-1394,1404-1439,1475-1567,1593-1610,1617-1650,1681-1691,1727-1746,1753-1767,1774-1783,1788-1858,1861-1862,1864,1867-1868,1870-1874,1898-1929,1943-1962,1983-2058,2104-2173,2180-2218,2234-2269,2276-2311,2318-2351,2396-2404,2479-2584
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "508a9fccb9af696ec9dd045275cab71eef09ec79",
+  "prompts": {},
+  "sessions": {
+    "s_38439ae326f7ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e88d1d-b3bb-451e-9770-aa1214b3f499",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Graham Brooks <graham@grahambrooks.com>"
+    }
+  }
+}
