@@ -9,9 +9,7 @@
 
 use super::{Fences, Heading, Rendered, highlight};
 use crate::diagrams::Lang;
-use adoc::ast::{
-    AttributeValue, Attributes, Block, DelimitedBlock, DelimitedContent, DelimitedStyle,
-};
+use adoc::ast::{Attributes, Block, DelimitedBlock, DelimitedContent, DelimitedStyle};
 use adoc::convert::html5::{Html5Converter, Html5Options, Stylesheet};
 use adoc::preprocessor::{Preprocessor, SafeMode};
 use anyhow::{Context, Result, anyhow, bail};
@@ -26,15 +24,10 @@ pub fn render(source: &str, path: &str, base_dir: &Path, fences: Fences) -> Resu
     // resolves from there, as it did under Jekyll with the site root.
     let name = Utf8Path::new(path).file_name().unwrap_or(path);
     let top = base.join(name);
-    // adoc's preprocessor (v2026.10.1) doesn't substitute attribute
-    // references in `include::` targets; Asciidoctor does. Until adoc does,
-    // substitute header-defined attributes in include lines here.
-    let attrs = header_attributes(source);
-    let source = substitute_include_targets(source, &attrs);
-    let lines = Preprocessor::with_attributes(attrs)
+    let lines = Preprocessor::with_attributes(Attributes::new())
         .with_base_dir(base)
         .with_safe_mode(SafeMode::Safe)
-        .run(&source, &top)
+        .run(source, &top)
         .map_err(|e| anyhow!("AsciiDoc preprocessing: {e}"))?;
     let mut doc = adoc::parser::parse_with(&lines, Attributes::new())
         .map_err(|e| anyhow!("AsciiDoc: {e}"))?;
@@ -76,57 +69,6 @@ pub fn render(source: &str, path: &str, base_dir: &Path, fences: Fences) -> Resu
         html: body,
         headings,
     })
-}
-
-/// `:name: value` entries in the document header: the lines after the
-/// `= Title` (or from the top) up to the first blank line.
-fn header_attributes(source: &str) -> Attributes {
-    let mut attrs = Attributes::new();
-    let mut lines = source
-        .lines()
-        .skip_while(|l| l.trim().is_empty())
-        .peekable();
-    if lines.peek().is_some_and(|l| l.starts_with("= ")) {
-        lines.next();
-    }
-    for line in lines {
-        if line.trim().is_empty() {
-            break;
-        }
-        let Some(rest) = line.strip_prefix(':') else {
-            continue;
-        };
-        let Some((name, value)) = rest.split_once(':') else {
-            continue;
-        };
-        if name.ends_with('!') || name.starts_with('!') || name.contains(' ') {
-            continue;
-        }
-        attrs.insert(
-            name.to_string(),
-            AttributeValue::String(value.trim().to_string()),
-        );
-    }
-    attrs
-}
-
-/// Replace `{name}` in `include::` lines with header attribute values.
-fn substitute_include_targets(source: &str, attrs: &Attributes) -> String {
-    let mut out = String::with_capacity(source.len());
-    for line in source.split_inclusive('\n') {
-        if line.starts_with("include::") && line.contains('{') {
-            let mut l = line.to_string();
-            for (name, value) in attrs {
-                if let Some(v) = value.as_str() {
-                    l = l.replace(&format!("{{{name}}}"), v);
-                }
-            }
-            out.push_str(&l);
-        } else {
-            out.push_str(line);
-        }
-    }
-    out
 }
 
 struct Transform<'a> {
