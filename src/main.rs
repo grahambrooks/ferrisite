@@ -35,6 +35,12 @@ enum Command {
         reference: PathBuf,
         /// The candidate build (ferrisite's output).
         candidate: PathBuf,
+        /// parity.toml: base URL, ignore patterns with reasons, content regions.
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// How many examples to print per check.
+        #[arg(long, default_value_t = 10)]
+        limit: usize,
     },
 }
 
@@ -71,6 +77,20 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
-        Command::Parity { .. } => bail!("not implemented yet (milestone M2, see DESIGN.md)"),
+        Command::Parity {
+            reference,
+            candidate,
+            config,
+            limit,
+        } => {
+            let cfg = ferrisite::parity::load_config(config.as_deref())?;
+            let report = ferrisite::parity::compare(&reference, &candidate, &cfg)?;
+            report.print(limit);
+            if report.failed() {
+                bail!("parity failed");
+            }
+            println!("parity ok");
+            Ok(())
+        }
     }
 }

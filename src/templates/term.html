@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ term.title }} | {{ site.title }}{% endblock %}
+{% block main %}
+<h1>{{ term.title }}</h1>
+<p>{{ term.count }} post{% if term.count != 1 %}s{% endif %} in <a href="{{ taxonomy.url }}">{{ taxonomy.title }}</a></p>
+{% for item in pager.items %}
+<article>
+<h2><a href="{{ item.url }}">{{ item.title }}</a></h2>
+{% if item.date %}<time datetime="{{ item.date | date('%Y-%m-%d') }}">{{ item.date | date('%b %-d, %Y') }}</time>{% endif %}
+</article>
+{% endfor %}
+<nav>
+{% if pager.prev %}<a href="{{ pager.prev }}">Newer</a>{% endif %}
+<span>Page {{ pager.number }} of {{ pager.total }}</span>
+{% if pager.next %}<a href="{{ pager.next }}">Older</a>{% endif %}
+</nav>
+{% endblock %}

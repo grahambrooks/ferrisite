@@ -2,6 +2,7 @@
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -14,15 +15,44 @@ pub struct Config {
     pub author: Option<String>,
     #[serde(default)]
     pub description: Option<String>,
+    /// Feed `<language>`, e.g. `en-us`.
+    #[serde(default = "default_language")]
+    pub language: String,
+    /// Feed `<copyright>`.
+    #[serde(default)]
+    pub copyright: Option<String>,
     #[serde(default)]
     pub pagination: Pagination,
-    /// Content directories that hold taxonomy term files (`content/tags/...`).
-    /// They are not sections. Taxonomies themselves arrive in M2.
+    /// Taxonomies, by their plural name, which is both the frontmatter key and
+    /// the content directory for term files (`content/tags/rust/_index.md`).
     #[serde(default)]
     pub taxonomies: Vec<String>,
     /// Words in an automatic summary (Hugo's `summaryLength`, default 70).
     #[serde(default = "default_summary_length")]
     pub summary_length: usize,
+    /// Directories copied verbatim to the output root, in order; later ones
+    /// win on conflict (a theme's static directory, then the site's).
+    #[serde(default = "default_static_dirs")]
+    pub static_dirs: Vec<String>,
+    /// Per-section list settings, keyed by section name.
+    #[serde(default)]
+    pub sections: BTreeMap<String, SectionConfig>,
+    /// Extra RSS feeds beyond the home, section and taxonomy feeds.
+    #[serde(default)]
+    pub feeds: Vec<FeedConfig>,
+    /// Post-processing of rendered Markdown (the equivalent of Hugo render hooks).
+    #[serde(default)]
+    pub markup: MarkupConfig,
+    /// Per-taxonomy options, keyed by taxonomy name.
+    #[serde(default)]
+    pub taxonomy_options: BTreeMap<String, TaxonomyOptions>,
+    /// Free-form values for templates, exposed as `site.params`.
+    #[serde(default)]
+    pub params: BTreeMap<String, toml::Value>,
+    /// Extra paths that get a byte-identical copy of the home feed
+    /// (`/index.xml`), e.g. a pre-migration feed URL like `rss.xml`.
+    #[serde(default)]
+    pub home_feed_copies: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -30,6 +60,76 @@ pub struct Config {
 pub struct Pagination {
     #[serde(default = "default_page_size")]
     pub page_size: usize,
+}
+
+/// How a section's HTML list is built. Section feeds are not filtered (Hugo's
+/// embedded feed template lists every page in the section).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SectionConfig {
+    /// List pages from another section instead of this one (e.g. a
+    /// `releases` section listing posts marked `release: true`).
+    #[serde(default)]
+    pub source: Option<String>,
+    /// Only pages whose frontmatter matches every key/value.
+    #[serde(default)]
+    pub include: BTreeMap<String, toml::Value>,
+    /// Drop pages whose frontmatter matches every key/value.
+    #[serde(default)]
+    pub exclude: BTreeMap<String, toml::Value>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FeedConfig {
+    /// Output path relative to the site root, e.g. `essays.xml`.
+    pub path: String,
+    pub title: String,
+    pub description: String,
+    /// Section whose pages the feed lists.
+    pub section: String,
+    #[serde(default)]
+    pub include: BTreeMap<String, toml::Value>,
+    #[serde(default)]
+    pub exclude: BTreeMap<String, toml::Value>,
+    /// `default` (Hugo's default page order) or `date-reverse` (Hugo's
+    /// `.ByDate.Reverse`, whose tie-break on equal dates is reversed too).
+    #[serde(default)]
+    pub order: FeedOrder,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarkupConfig {
+    /// Inline local `.svg` images from this directory (relative to the site
+    /// root) instead of emitting `<img>`, so `currentColor` in the SVG follows
+    /// the page's text colour. A missing file fails the build.
+    #[serde(default)]
+    pub inline_svg_from: Option<String>,
+    /// Wrap every table in `<div class="...">`, e.g. for horizontal scrolling.
+    #[serde(default)]
+    pub table_wrapper: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FeedOrder {
+    #[default]
+    Default,
+    DateReverse,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TaxonomyOptions {
+    /// Term pages paginate (with a `page/1/` alias). `false` lists every page
+    /// on one term page.
+    #[serde(default = "yes")]
+    pub paginate: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 impl Default for Pagination {
@@ -46,6 +146,14 @@ fn default_page_size() -> usize {
 
 fn default_summary_length() -> usize {
     70
+}
+
+fn default_language() -> String {
+    "en-us".to_string()
+}
+
+fn default_static_dirs() -> Vec<String> {
+    vec!["static".to_string()]
 }
 
 impl Config {
@@ -72,6 +180,10 @@ impl Config {
     pub fn permalink(&self, rel: &str) -> String {
         format!("{}{}", self.base_url, rel.trim_start_matches('/'))
     }
+
+    pub fn section(&self, name: &str) -> SectionConfig {
+        self.sections.get(name).cloned().unwrap_or_default()
+    }
 }
 
 #[cfg(test)]
@@ -84,11 +196,34 @@ mod tests {
         assert_eq!(c.base_url, "https://example.com/");
         assert_eq!(c.pagination.page_size, 10);
         assert_eq!(c.summary_length, 70);
+        assert_eq!(c.static_dirs, vec!["static"]);
         assert_eq!(c.permalink("/post/a/"), "https://example.com/post/a/");
     }
 
     #[test]
     fn rejects_unknown_keys() {
         assert!(Config::parse("base_url = \"x\"\ntitle = \"T\"\nbogus = 1\n").is_err());
+    }
+
+    #[test]
+    fn section_filters_and_feeds() {
+        let c = Config::parse(
+            r#"base_url = "x"
+title = "T"
+[sections.releases]
+source = "post"
+include = { release = true }
+[[feeds]]
+path = "essays.xml"
+title = "Essays"
+description = "d"
+section = "post"
+exclude = { release = true }
+"#,
+        )
+        .unwrap();
+        assert_eq!(c.section("releases").source.as_deref(), Some("post"));
+        assert!(c.section("missing").include.is_empty());
+        assert_eq!(c.feeds[0].exclude["release"], toml::Value::Boolean(true));
     }
 }

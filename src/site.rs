@@ -1,13 +1,24 @@
 //! Resolve: turns discovered pages into a `Site`. Every cross-page fact
-//! (visibility, ordering, sections, pagination, summaries) is computed here,
-//! so templates only loop and print and can't make a build non-deterministic.
+//! (visibility, ordering, sections, taxonomies, pagination, aliases,
+//! summaries) is computed here, so templates only loop and print and can't
+//! make a build non-deterministic.
+//!
+//! Two passes: the first works on frontmatter alone (visibility, URLs, order,
+//! lists), which is what `ref` and list-showing shortcodes need; the second
+//! renders markup with shortcodes expanded against that index.
 
-use crate::config::Config;
+use crate::config::{Config, SectionConfig};
+use crate::content::frontmatter::{string_list, toml_to_yaml};
 use crate::content::{Discovered, Kind, Page};
+use crate::markup::shortcodes::{Call, Expand};
 use crate::markup::{self, Heading, text};
+use crate::render::Renderer;
+use anyhow::{Context, Result, bail};
 use chrono::{DateTime, FixedOffset};
 use rayon::prelude::*;
+use serde_yaml::Value;
 use std::cmp::Ordering;
+use std::collections::{BTreeMap, HashMap};
 
 /// A page with its markup rendered and derived values computed.
 #[derive(Debug, Clone)]
@@ -15,6 +26,7 @@ pub struct Entry {
     pub page: Page,
     pub content: String,
     pub summary: String,
+    pub plain: String,
     pub headings: Vec<Heading>,
     pub word_count: usize,
     pub reading_time: usize,
@@ -26,6 +38,9 @@ impl Entry {
     }
     pub fn date(&self) -> Option<DateTime<FixedOffset>> {
         self.page.fm.date
+    }
+    pub fn param(&self, key: &str) -> Option<&Value> {
+        self.page.fm.params.get(Value::String(key.into()))
     }
 }
 
@@ -46,11 +61,45 @@ pub struct Pager {
 pub struct Section {
     pub name: String,
     pub url: String,
+    pub title: String,
     /// Index into `Site::entries` of the section's `_index` page, if any.
     pub index: Option<usize>,
-    /// Regular pages in the section, in Hugo's default order.
+    /// Every regular page in the section, in Hugo's default order (the feed).
+    pub pages: Vec<usize>,
+    /// What the HTML list shows, after `source`/`include`/`exclude`.
+    pub list: Vec<usize>,
+    pub pagers: Vec<Pager>,
+    /// Whether the section gets `/<section>/index.xml`.
+    pub feed: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct Term {
+    /// The term as written in frontmatter.
+    pub name: String,
+    pub url: String,
+    pub title: String,
+    pub index: Option<usize>,
     pub pages: Vec<usize>,
     pub pagers: Vec<Pager>,
+    /// Whether the term list paginates (and so has a `page/1/` alias).
+    pub paginated: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct Taxonomy {
+    pub name: String,
+    pub url: String,
+    pub title: String,
+    pub index: Option<usize>,
+    pub terms: Vec<Term>,
+}
+
+/// A redirect stub: `path` is the output file, `target` a site-relative URL.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Alias {
+    pub path: String,
+    pub target: String,
 }
 
 #[derive(Debug)]
@@ -58,9 +107,12 @@ pub struct Site {
     pub config: Config,
     pub entries: Vec<Entry>,
     pub home: Option<usize>,
-    /// Every regular page, in Hugo's default order.
+    /// Regular pages in global collections (feeds, search, recent), in Hugo's
+    /// default order. Excludes pages with `build.list: local` or `never`.
     pub regular: Vec<usize>,
     pub sections: Vec<Section>,
+    pub taxonomies: Vec<Taxonomy>,
+    pub aliases: Vec<Alias>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -70,105 +122,506 @@ pub struct Visibility {
     pub now: DateTime<FixedOffset>,
 }
 
-pub fn resolve(config: Config, found: Discovered, vis: Visibility) -> Site {
-    let visible: Vec<Page> = found
+/// What pass one knows about a page, for `ref` and list shortcodes.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Brief {
+    pub title: String,
+    pub url: String,
+    pub permalink: String,
+    pub date: Option<String>,
+    pub section: String,
+    pub params: serde_yaml::Mapping,
+}
+
+pub struct Index {
+    pub briefs: Vec<Brief>,
+    /// Section name → its HTML list, as briefs (for `recent-posts`-style shortcodes).
+    pub lists: BTreeMap<String, Vec<Brief>>,
+    sources: Vec<String>,
+}
+
+impl Index {
+    /// Resolve a Hugo `ref` argument: a content path (with or without
+    /// extension) or a file stem, optionally with `#fragment`.
+    pub fn resolve_ref(&self, arg: &str) -> Result<String> {
+        let (path, fragment) = match arg.split_once('#') {
+            Some((p, f)) => (p, Some(f)),
+            None => (arg, None),
+        };
+        let path = path.trim_start_matches('/');
+        let matches: Vec<usize> = self
+            .sources
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| {
+                let no_ext = s.rsplit_once('.').map(|(a, _)| a).unwrap_or(s);
+                let stem = no_ext.rsplit('/').next().unwrap_or(no_ext);
+                *s == path || no_ext == path || stem == path
+            })
+            .map(|(i, _)| i)
+            .collect();
+        let i = match matches.as_slice() {
+            [i] => *i,
+            [] => bail!("ref {arg:?}: no page found"),
+            many => bail!(
+                "ref {arg:?} is ambiguous: {}",
+                many.iter()
+                    .map(|&i| self.sources[i].as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        };
+        let permalink = &self.briefs[i].permalink;
+        Ok(match fragment {
+            Some(f) if !f.is_empty() => format!("{permalink}#{f}"),
+            _ => permalink.clone(),
+        })
+    }
+}
+
+pub fn resolve(
+    config: Config,
+    root: &std::path::Path,
+    found: Discovered,
+    vis: Visibility,
+    renderer: &Renderer,
+) -> Result<Site> {
+    // Pass one: visibility, order, sections and lists from frontmatter alone.
+    let mut pages: Vec<Page> = found
         .pages
         .into_iter()
         .filter(|p| vis.drafts || !p.fm.draft)
         .filter(|p| vis.future || p.fm.date.is_none_or(|d| d <= vis.now))
         .collect();
-    let summary_length = config.summary_length;
-    let mut entries: Vec<Entry> = visible
-        .into_par_iter()
-        .map(|page| render_entry(page, summary_length))
-        .collect();
-    entries.sort_by(|a, b| a.page.source.cmp(&b.page.source));
+    pages.sort_by(|a, b| a.source.cmp(&b.source));
+    let briefs: Vec<Brief> = pages.iter().map(|p| brief(&config, p)).collect();
 
-    let home = entries.iter().position(|e| e.page.kind == Kind::Home);
-    let mut regular: Vec<usize> = (0..entries.len())
-        .filter(|&i| entries[i].page.kind == Kind::Page)
+    let order = |a: usize, b: usize| hugo_order(&pages[a], &pages[b]);
+    let mut regular_all: Vec<usize> = (0..pages.len())
+        .filter(|&i| pages[i].kind == Kind::Page)
         .collect();
-    regular.sort_by(|&a, &b| hugo_order(&entries[a], &entries[b]));
-
-    let mut names: Vec<String> = entries
+    regular_all.sort_by(|&a, &b| order(a, b));
+    let regular: Vec<usize> = regular_all
         .iter()
-        .filter(|e| e.page.kind == Kind::Section)
-        .map(|e| e.page.url.trim_matches('/').to_string())
+        .copied()
+        .filter(|&i| listed_globally(&pages[i]))
+        .collect();
+
+    let page_size = config.pagination.page_size;
+    let mut names: Vec<String> = pages
+        .iter()
+        .filter(|p| p.kind == Kind::Section)
+        .map(|p| p.url.trim_matches('/').to_string())
         .chain(found.implicit_sections)
         .collect();
     names.sort();
     names.dedup();
-    let page_size = config.pagination.page_size;
-    let sections = names
-        .into_iter()
-        .map(|name| {
-            let url = format!("/{name}/");
-            let index = entries
-                .iter()
-                .position(|e| e.page.kind == Kind::Section && e.page.url == url);
-            let pages: Vec<usize> = regular
+    let mut sections = Vec::new();
+    for name in names {
+        let url = format!("/{name}/");
+        let index = pages
+            .iter()
+            .position(|p| p.kind == Kind::Section && p.url == url);
+        let in_section = |section: &str| -> Vec<usize> {
+            regular_all
                 .iter()
                 .copied()
-                .filter(|&i| in_section(&entries[i].page, &name))
-                .collect();
-            let pagers = paginate(&url, &pages, page_size);
-            Section {
-                name,
-                url,
-                index,
-                pages,
-                pagers,
-            }
+                .filter(|&i| pages[i].url.starts_with(&format!("/{section}/")))
+                .collect()
+        };
+        let own = in_section(&name);
+        let cfg: SectionConfig = config.section(&name);
+        let source = cfg.source.clone().unwrap_or_else(|| name.clone());
+        let list: Vec<usize> = in_section(&source)
+            .into_iter()
+            .filter(|&i| filter_matches(&pages[i], &cfg.include, &cfg.exclude))
+            .collect();
+        let pagers = paginate(&url, &list, page_size);
+        let feed = index.is_none_or(|i| outputs_allow(&pages[i], "rss"));
+        let title = index
+            .and_then(|i| pages[i].fm.title.clone())
+            .unwrap_or_else(|| go_title(&name));
+        sections.push(Section {
+            name,
+            url,
+            title,
+            index,
+            pages: own,
+            list,
+            pagers,
+            feed,
+        });
+    }
+
+    let taxonomies = build_taxonomies(&config, &pages, &regular_all, page_size)?;
+
+    let lists = sections
+        .iter()
+        .map(|s| {
+            (
+                s.name.clone(),
+                s.list.iter().map(|&i| briefs[i].clone()).collect(),
+            )
         })
         .collect();
+    let index = Index {
+        sources: pages.iter().map(|p| p.source.clone()).collect(),
+        briefs,
+        lists,
+    };
 
-    Site {
+    // Pass two: markup, with shortcodes expanded against the index.
+    let summary_length = config.summary_length;
+    let hooks = markup::Hooks {
+        inline_svg_from: config.markup.inline_svg_from.as_ref().map(|d| root.join(d)),
+        table_wrapper: config.markup.table_wrapper.clone(),
+    };
+    let entries: Vec<Entry> = pages
+        .into_par_iter()
+        .enumerate()
+        .map(|(i, page)| {
+            let source = page.source.clone();
+            render_entry(page, &index, i, renderer, summary_length, &hooks)
+                .with_context(|| source.clone())
+        })
+        .collect::<Result<_>>()?;
+
+    let home = entries.iter().position(|e| e.page.kind == Kind::Home);
+    let aliases = collect_aliases(&entries, &sections, &taxonomies)?;
+    Ok(Site {
         config,
         entries,
         home,
         regular,
         sections,
+        taxonomies,
+        aliases,
+    })
+}
+
+fn brief(config: &Config, p: &Page) -> Brief {
+    Brief {
+        title: p.fm.title.clone().unwrap_or_default(),
+        url: p.url.clone(),
+        permalink: config.permalink(&p.url),
+        date: p.fm.date.map(|d| d.to_rfc3339()),
+        section: p.section.clone(),
+        params: p.fm.params.clone(),
     }
 }
 
-/// A page belongs to a section if its URL sits under the section's directory
-/// (nested sections are listed by their top-level section in M1).
-fn in_section(page: &Page, section: &str) -> bool {
-    page.url.starts_with(&format!("/{section}/"))
+fn build_taxonomies(
+    config: &Config,
+    pages: &[Page],
+    regular_all: &[usize],
+    page_size: usize,
+) -> Result<Vec<Taxonomy>> {
+    let mut out = Vec::new();
+    for name in &config.taxonomies {
+        let url = format!("/{name}/");
+        let index = pages
+            .iter()
+            .position(|p| p.kind == Kind::Taxonomy && p.url == url);
+        // Term name → pages, from frontmatter. BTreeMap keeps term order stable.
+        let mut terms: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+        for &i in regular_all {
+            if let Some(v) = pages[i].fm.params.get(Value::String(name.clone())) {
+                for term in string_list(v) {
+                    terms.entry(term).or_default().push(i);
+                }
+            }
+        }
+        // Term files with no pages still get a term page (Hugo does the same).
+        let mut by_url: HashMap<String, String> = HashMap::new();
+        for term in terms.keys() {
+            let term_url = term_url(name, term);
+            if let Some(other) = by_url.insert(term_url.clone(), term.clone()) {
+                bail!(
+                    "{name}: terms {other:?} and {term:?} both map to {term_url}; give each term one spelling"
+                );
+            }
+        }
+        for p in pages.iter().filter(|p| p.kind == Kind::Term) {
+            if p.url.starts_with(&url) && !by_url.contains_key(&p.url) {
+                let seg = p.url[url.len()..].trim_end_matches('/').to_string();
+                by_url.insert(p.url.clone(), seg.clone());
+                terms.entry(seg).or_default();
+            }
+        }
+        let terms = terms
+            .into_iter()
+            .map(|(term, mut items)| {
+                items.sort_by(|&a, &b| hugo_order(&pages[a], &pages[b]));
+                let turl = term_url(name, &term);
+                let tindex = pages
+                    .iter()
+                    .position(|p| p.kind == Kind::Term && p.url == turl);
+                let title = tindex
+                    .and_then(|i| pages[i].fm.title.clone())
+                    .unwrap_or_else(|| go_title(&term));
+                let paginated = config.taxonomy_options.get(name).is_none_or(|o| o.paginate);
+                let size = if paginated {
+                    page_size
+                } else {
+                    items.len().max(1)
+                };
+                let pagers = paginate(&turl, &items, size);
+                Term {
+                    name: term,
+                    url: turl,
+                    title,
+                    index: tindex,
+                    pages: items,
+                    pagers,
+                    paginated,
+                }
+            })
+            .collect();
+        let title = index
+            .and_then(|i| pages[i].fm.title.clone())
+            .unwrap_or_else(|| go_title(name));
+        out.push(Taxonomy {
+            name: name.clone(),
+            url,
+            title,
+            index,
+            terms,
+        });
+    }
+    Ok(out)
 }
 
-fn render_entry(page: Page, summary_length: usize) -> Entry {
-    let rendered = markup::markdown(&page.body);
+pub fn term_url(taxonomy: &str, term: &str) -> String {
+    format!("/{taxonomy}/{}/", term.replace(' ', "-"))
+}
+
+/// Go's `strings.Title`, which Hugo uses for default term and section titles:
+/// uppercase the first letter of every word, where anything other than a
+/// letter, digit or `_` separates words. `open-source` → `Open-Source`.
+pub fn go_title(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut at_start = true;
+    for c in s.chars() {
+        if at_start && c.is_alphabetic() {
+            out.extend(c.to_uppercase());
+        } else {
+            out.push(c);
+        }
+        at_start = !(c.is_alphanumeric() || c == '_');
+    }
+    out
+}
+
+fn listed_globally(p: &Page) -> bool {
+    let list =
+        p.fm.params
+            .get(Value::String("build".into()))
+            .and_then(|b| b.get("list"))
+            .and_then(Value::as_str);
+    !matches!(list, Some("local") | Some("never"))
+}
+
+fn outputs_allow(p: &Page, format: &str) -> bool {
+    match p.fm.params.get(Value::String("outputs".into())) {
+        Some(v) => string_list(v)
+            .iter()
+            .any(|o| o.eq_ignore_ascii_case(format)),
+        None => true,
+    }
+}
+
+pub fn filter_matches(
+    p: &Page,
+    include: &BTreeMap<String, toml::Value>,
+    exclude: &BTreeMap<String, toml::Value>,
+) -> bool {
+    let has = |k: &String, v: &toml::Value| {
+        p.fm.params.get(Value::String(k.clone())) == Some(&toml_to_yaml(v.clone()))
+    };
+    include.iter().all(|(k, v)| has(k, v))
+        && !(!exclude.is_empty() && exclude.iter().all(|(k, v)| has(k, v)))
+}
+
+fn render_entry(
+    page: Page,
+    index: &Index,
+    me: usize,
+    renderer: &Renderer,
+    summary_length: usize,
+    hooks: &markup::Hooks,
+) -> Result<Entry> {
+    let expander = PageExpander {
+        index,
+        renderer,
+        me,
+    };
+    let mut rendered = markup::markdown_with_shortcodes(&page.body, &expander)?;
+    rendered.html = hooks.apply(&rendered.html)?;
+    let plain = text::plain(&rendered.html)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
     let word_count = text::word_count(&rendered.html);
     let summary = if let Some((before, _)) = page.body.split_once("<!--more-->") {
-        markup::markdown(before).html.trim_end().to_string()
+        markup::markdown_with_shortcodes(before, &expander)?
+            .html
+            .trim_end()
+            .to_string()
     } else if let Some(s) = &page.fm.summary {
-        markup::markdown(s).html.trim_end().to_string()
+        markup::markdown_with_shortcodes(s, &expander)?
+            .html
+            .trim_end()
+            .to_string()
     } else {
         text::auto_summary(&rendered.html, summary_length)
     };
-    Entry {
+    Ok(Entry {
         reading_time: text::reading_time(word_count),
         word_count,
         summary,
+        plain,
         headings: rendered.headings,
         content: rendered.html,
         page,
+    })
+}
+
+/// Built-in shortcodes (`ref`, `relref`, `highlight`), then site templates in
+/// `templates/shortcodes/<name>.html`. Anything else fails the build.
+struct PageExpander<'a> {
+    index: &'a Index,
+    renderer: &'a Renderer,
+    me: usize,
+}
+
+impl Expand for PageExpander<'_> {
+    fn expand(&self, call: &Call, inner: Option<&str>) -> Result<String> {
+        match call.name.as_str() {
+            "ref" | "relref" => {
+                let arg = call.args.first().context("needs a page argument")?;
+                let permalink = self.index.resolve_ref(arg)?;
+                if call.name == "relref" {
+                    let base = &self.index.briefs[self.me].permalink;
+                    let root = base
+                        .find("://")
+                        .and_then(|i| base[i + 3..].find('/').map(|j| i + 3 + j))
+                        .unwrap_or(0);
+                    return Ok(permalink[root..].to_string());
+                }
+                Ok(permalink)
+            }
+            "highlight" => {
+                // Syntax highlighting arrives in M3; until then a plain code block.
+                let lang = call.args.first().map(String::as_str).unwrap_or("");
+                let code = inner.unwrap_or("");
+                let code = code.strip_prefix('\n').unwrap_or(code);
+                let code = code.strip_suffix('\n').unwrap_or(code);
+                let class = if lang.is_empty() {
+                    String::new()
+                } else {
+                    format!(" class=\"language-{lang}\"")
+                };
+                Ok(format!(
+                    "<pre><code{class}>{}</code></pre>\n",
+                    escape_html(code)
+                ))
+            }
+            name => self
+                .renderer
+                .render_shortcode(name, &call.args, inner, &self.index.briefs[self.me], &self.index.lists)?
+                .with_context(|| {
+                    format!("unknown shortcode `{name}` (no built-in and no templates/shortcodes/{name}.html)")
+                }),
+        }
     }
+}
+
+fn escape_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+fn collect_aliases(
+    entries: &[Entry],
+    sections: &[Section],
+    taxonomies: &[Taxonomy],
+) -> Result<Vec<Alias>> {
+    let mut aliases: BTreeMap<String, String> = BTreeMap::new();
+    let mut add = |from: &str, target: &str, origin: &str| -> Result<()> {
+        let path = alias_path(from);
+        if let Some(existing) = aliases.get(&path)
+            && existing != target
+        {
+            bail!("alias {from} ({origin}) already redirects to {existing}, not {target}");
+        }
+        aliases.insert(path, target.to_string());
+        Ok(())
+    };
+    for e in entries {
+        for a in &e.page.fm.aliases {
+            add(a, &e.page.url, &e.page.source)?;
+        }
+    }
+    // Hugo makes `<list>/page/1/` an alias of the list's first page.
+    for s in sections.iter().filter(|s| !s.list.is_empty()) {
+        add(&format!("{}page/1/", s.url), &s.url, "pagination")?;
+    }
+    for t in taxonomies {
+        for term in t
+            .terms
+            .iter()
+            .filter(|t| t.paginated && !t.pages.is_empty())
+        {
+            add(&format!("{}page/1/", term.url), &term.url, "pagination")?;
+        }
+    }
+    let real: std::collections::HashSet<String> = entries
+        .iter()
+        .map(|e| crate::render::index_path(&e.page.url))
+        .collect();
+    if let Some(clash) = aliases.keys().find(|p| real.contains(*p)) {
+        bail!("alias output {clash} would overwrite a real page");
+    }
+    Ok(aliases
+        .into_iter()
+        .map(|(path, target)| Alias { path, target })
+        .collect())
+}
+
+/// Output file for an alias: `/blog/x/` → `blog/x/index.html`,
+/// `/2010/10/20/x.html` → `2010/10/20/x.html`.
+pub fn alias_path(alias: &str) -> String {
+    let a = alias.trim_start_matches('/');
+    if a.ends_with(".html") || a.ends_with(".htm") {
+        a.to_string()
+    } else if a.is_empty() {
+        "index.html".to_string()
+    } else {
+        format!("{}/index.html", a.trim_end_matches('/'))
+    }
+}
+
+/// Hugo's `.ByDate.Reverse`: date descending, and on equal dates the default
+/// order's tie-break (weight, title, path) reversed as well.
+pub fn by_date_reverse(a: &Page, b: &Page) -> Ordering {
+    b.fm.date.cmp(&a.fm.date).then_with(|| hugo_order(b, a))
 }
 
 /// Hugo's default page order: weight (unweighted last), date descending,
 /// title, then source path as the final tie-break.
-fn hugo_order(a: &Entry, b: &Entry) -> Ordering {
-    let weight = |e: &Entry| match e.page.fm.weight {
+pub fn hugo_order(a: &Page, b: &Page) -> Ordering {
+    let weight = |p: &Page| match p.fm.weight {
         0 => i64::MAX,
         w => w,
     };
+    let title = |p: &Page| p.fm.title.clone().unwrap_or_default();
     weight(a)
         .cmp(&weight(b))
-        .then_with(|| b.date().cmp(&a.date()))
-        .then_with(|| a.title().cmp(b.title()))
-        .then_with(|| a.page.source.cmp(&b.page.source))
+        .then_with(|| b.fm.date.cmp(&a.fm.date))
+        .then_with(|| title(a).cmp(&title(b)))
+        .then_with(|| a.source.cmp(&b.source))
 }
 
 pub fn paginate(base: &str, items: &[usize], size: usize) -> Vec<Pager> {
@@ -219,5 +672,24 @@ mod tests {
         let pagers = paginate("/releases/", &[], 10);
         assert_eq!(pagers.len(), 1);
         assert!(pagers[0].items.is_empty());
+    }
+
+    #[test]
+    fn hugo_default_titles() {
+        assert_eq!(go_title("mcp"), "Mcp");
+        assert_eq!(go_title("open-source"), "Open-Source");
+        assert_eq!(go_title("C++"), "C++");
+        assert_eq!(
+            go_title("Software development with AI"),
+            "Software Development With AI"
+        );
+    }
+
+    #[test]
+    fn alias_paths() {
+        assert_eq!(alias_path("/blog/x/"), "blog/x/index.html");
+        assert_eq!(alias_path("/blog/x"), "blog/x/index.html");
+        assert_eq!(alias_path("/2010/10/20/x.html"), "2010/10/20/x.html");
+        assert_eq!(alias_path("/tags/C/C++/"), "tags/C/C++/index.html");
     }
 }

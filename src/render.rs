@@ -3,19 +3,19 @@
 //! Template lookup: a site's `templates/` directory overrides the built-in
 //! defaults by name. For a page in section `post`, `post/single.html` is tried
 //! before `single.html`; top-level pages use `page.html`; section lists try
-//! `<section>/list.html` then `list.html`; the home page uses `home.html`.
-//!
-//! Context (stable, documented in TEMPLATES.md): `site`, `page`, `pager`,
-//! `section`, `recent`; filter `date(fmt)` (chrono strftime); function
-//! `absurl(path)`.
+//! `<section>/list.html` then `list.html`; term pages `<taxonomy>/term.html`
+//! then `term.html`; taxonomy indexes `<taxonomy>/taxonomy.html` then
+//! `taxonomy.html`; the home page `home.html`; plus `404.html`, `robots.txt`
+//! and shortcodes in `shortcodes/<name>.html`. See TEMPLATES.md.
 
 use crate::config::Config;
 use crate::content::Kind;
-use crate::markup::Heading;
-use crate::site::{Entry, Pager, Section, Site};
+use crate::markup::{self, Heading};
+use crate::site::{Brief, Entry, Pager, Section, Site, Taxonomy, Term};
 use anyhow::{Context, Result};
 use minijinja::{Environment, Value, context};
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 const BUILTIN: &[(&str, &str)] = &[
@@ -24,17 +24,22 @@ const BUILTIN: &[(&str, &str)] = &[
     ("page.html", include_str!("templates/page.html")),
     ("list.html", include_str!("templates/list.html")),
     ("home.html", include_str!("templates/home.html")),
+    ("term.html", include_str!("templates/term.html")),
+    ("taxonomy.html", include_str!("templates/taxonomy.html")),
+    ("404.html", include_str!("templates/404.html")),
+    ("robots.txt", include_str!("templates/robots.txt")),
 ];
 
 /// How many recent pages the home template gets.
 const RECENT: usize = 10;
 
-#[derive(Serialize)]
-struct SiteCtx<'a> {
-    title: &'a str,
-    base_url: &'a str,
-    author: Option<&'a str>,
-    description: Option<&'a str>,
+#[derive(Serialize, Clone)]
+struct SiteCtx {
+    title: String,
+    base_url: String,
+    author: Option<String>,
+    description: Option<String>,
+    params: BTreeMap<String, toml::Value>,
 }
 
 #[derive(Serialize)]
@@ -65,8 +70,17 @@ struct PagerCtx<'a> {
     items: Vec<PageCtx<'a>>,
 }
 
+#[derive(Serialize)]
+struct TermCtx<'a> {
+    name: &'a str,
+    title: &'a str,
+    url: &'a str,
+    count: usize,
+}
+
 pub struct Renderer {
     env: Environment<'static>,
+    site: SiteCtx,
 }
 
 /// One rendered file: site-relative output path and its contents.
@@ -95,20 +109,53 @@ impl Renderer {
         }
         env.set_formatter(html_formatter);
         env.add_filter("date", date_filter);
+        env.add_filter("markdownify", |s: String| {
+            Value::from_safe_string(markup::markdownify(&s))
+        });
         let base = config.base_url.clone();
         env.add_function("absurl", move |path: String| {
             format!("{}{}", base, path.trim_start_matches('/'))
         });
-        Ok(Renderer { env })
+        Ok(Renderer {
+            env,
+            site: SiteCtx {
+                title: config.title.clone(),
+                base_url: config.base_url.clone(),
+                author: config.author.clone(),
+                description: config.description.clone(),
+                params: config.params.clone(),
+            },
+        })
+    }
+
+    /// Render `shortcodes/<name>.html`, or `None` if the site has no such
+    /// template. Context: `args`, `inner` (already safe HTML/text), `page`
+    /// (the calling page, as a brief), `lists` (section name → list items),
+    /// `site`.
+    pub fn render_shortcode(
+        &self,
+        name: &str,
+        args: &[String],
+        inner: Option<&str>,
+        page: &Brief,
+        lists: &BTreeMap<String, Vec<Brief>>,
+    ) -> Result<Option<String>> {
+        let template = format!("shortcodes/{name}.html");
+        if self.env.get_template(&template).is_err() {
+            return Ok(None);
+        }
+        let ctx = context! {
+            site => ser(&self.site),
+            args => ser(&args),
+            inner => inner.map(|i| Value::from_safe_string(i.to_string())),
+            page => ser(page),
+            lists => ser(lists),
+        };
+        self.render(&[template], ctx).map(Some)
     }
 
     pub fn render_site(&self, site: &Site) -> Result<Vec<OutputFile>> {
-        let site_ctx = SiteCtx {
-            title: &site.config.title,
-            base_url: &site.config.base_url,
-            author: site.config.author.as_deref(),
-            description: site.config.description.as_deref(),
-        };
+        let site_ctx = ser(&self.site);
         let mut out = Vec::new();
         for entry in &site.entries {
             let template = match (entry.page.kind, entry.page.section.as_str()) {
@@ -116,13 +163,13 @@ impl Renderer {
                 (Kind::Page, section) => {
                     vec![format!("{section}/single.html"), "single.html".to_string()]
                 }
-                // Home and section pages are rendered with their lists below.
+                // Home, section, taxonomy and term pages render with their lists below.
                 _ => continue,
             };
             let html = self
                 .render(
                     &template,
-                    context! { site => ser(&site_ctx), page => ser(&page_ctx(site, entry, true)) },
+                    context! { site => site_ctx.clone(), page => ser(&page_ctx(site, entry, true)) },
                 )
                 .with_context(|| format!("rendering {}", entry.page.source))?;
             out.push(OutputFile {
@@ -131,10 +178,10 @@ impl Renderer {
             });
         }
         for section in &site.sections {
+            let page = section
+                .index
+                .map(|i| page_ctx(site, &site.entries[i], true));
             for pager in &section.pagers {
-                let page = section
-                    .index
-                    .map(|i| page_ctx(site, &site.entries[i], true));
                 let html = self
                     .render(
                         &[
@@ -142,7 +189,7 @@ impl Renderer {
                             "list.html".to_string(),
                         ],
                         context! {
-                            site => ser(&site_ctx),
+                            site => site_ctx.clone(),
                             page => ser(&page),
                             section => section_ctx(section),
                             pager => ser(&pager_ctx(site, pager)),
@@ -155,6 +202,12 @@ impl Renderer {
                 });
             }
         }
+        for taxonomy in &site.taxonomies {
+            out.push(self.render_taxonomy(site, taxonomy, &site_ctx)?);
+            for term in &taxonomy.terms {
+                out.extend(self.render_term(site, taxonomy, term, &site_ctx)?);
+            }
+        }
         let home = site.home.map(|i| page_ctx(site, &site.entries[i], true));
         let recent: Vec<PageCtx> = site
             .regular
@@ -165,15 +218,73 @@ impl Renderer {
         let html = self
             .render(
                 &["home.html".to_string()],
-                context! { site => ser(&site_ctx), page => ser(&home), recent => ser(&recent) },
+                context! { site => site_ctx.clone(), page => ser(&home), recent => ser(&recent) },
             )
             .context("rendering home page")?;
         out.push(OutputFile {
             path: "index.html".to_string(),
             contents: html,
         });
-        out.sort_by(|a, b| a.path.cmp(&b.path));
+        for (name, path) in [("404.html", "404.html"), ("robots.txt", "robots.txt")] {
+            out.push(OutputFile {
+                path: path.to_string(),
+                contents: self
+                    .render(&[name.to_string()], context! { site => site_ctx.clone() })
+                    .with_context(|| format!("rendering {name}"))?,
+            });
+        }
         Ok(out)
+    }
+
+    fn render_taxonomy(&self, site: &Site, t: &Taxonomy, site_ctx: &Value) -> Result<OutputFile> {
+        let terms: Vec<TermCtx> = t.terms.iter().map(term_ctx).collect();
+        let page = t.index.map(|i| page_ctx(site, &site.entries[i], true));
+        let html = self
+            .render(
+                &[format!("{}/taxonomy.html", t.name), "taxonomy.html".to_string()],
+                context! {
+                    site => site_ctx.clone(),
+                    page => ser(&page),
+                    taxonomy => context! { name => &t.name, title => &t.title, url => &t.url, terms => ser(&terms) },
+                },
+            )
+            .with_context(|| format!("rendering {}", t.url))?;
+        Ok(OutputFile {
+            path: index_path(&t.url),
+            contents: html,
+        })
+    }
+
+    fn render_term(
+        &self,
+        site: &Site,
+        t: &Taxonomy,
+        term: &Term,
+        site_ctx: &Value,
+    ) -> Result<Vec<OutputFile>> {
+        let page = term.index.map(|i| page_ctx(site, &site.entries[i], true));
+        let taxonomy = context! { name => &t.name, title => &t.title, url => &t.url };
+        term.pagers
+            .iter()
+            .map(|pager| {
+                let html = self
+                    .render(
+                        &[format!("{}/term.html", t.name), "term.html".to_string()],
+                        context! {
+                            site => site_ctx.clone(),
+                            page => ser(&page),
+                            taxonomy => taxonomy.clone(),
+                            term => ser(&term_ctx(term)),
+                            pager => ser(&pager_ctx(site, pager)),
+                        },
+                    )
+                    .with_context(|| format!("rendering {}", pager.url))?;
+                Ok(OutputFile {
+                    path: index_path(&pager.url),
+                    contents: html,
+                })
+            })
+            .collect()
     }
 
     fn render(&self, names: &[String], ctx: Value) -> Result<String> {
@@ -184,6 +295,15 @@ impl Renderer {
         let tmpl = self.env.get_template(name)?;
         tmpl.render(ctx)
             .map_err(|e| anyhow::anyhow!("{name}: {e:#}"))
+    }
+}
+
+fn term_ctx(term: &Term) -> TermCtx<'_> {
+    TermCtx {
+        name: &term.name,
+        title: &term.title,
+        url: &term.url,
+        count: term.pages.len(),
     }
 }
 
@@ -219,6 +339,8 @@ fn page_ctx<'a>(site: &'a Site, e: &'a Entry, with_content: bool) -> PageCtx<'a>
             Kind::Home => "home",
             Kind::Section => "section",
             Kind::Page => "page",
+            Kind::Taxonomy => "taxonomy",
+            Kind::Term => "term",
         },
         title: e.title(),
         url: &e.page.url,
@@ -256,7 +378,12 @@ fn ser<T: Serialize>(v: &T) -> Value {
 }
 
 fn section_ctx(section: &Section) -> Value {
-    context! { name => &section.name, url => &section.url, count => section.pages.len() }
+    context! {
+        name => &section.name,
+        title => &section.title,
+        url => &section.url,
+        count => section.list.len(),
+    }
 }
 
 /// HTML auto-escaping of `& < > " '` only. minijinja's default also encodes

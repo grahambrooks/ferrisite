@@ -1,6 +1,41 @@
 # ferrisite design
 
-Status: **M1 done, 2026-10-31.** `ferrisite build` renders grahambrooks.com's posts,
+Status: **M2 done, 2026-10-31.** `ferrisite parity` passes against Hugo's
+build of grahambrooks.com (details under "M2 results" below).
+
+**M2 results** (Hugo 0.169 build vs ferrisite build of the same commit):
+
+- 1. Missing files: 0 of 1,340 compared. 215 reference files are ignored by the
+  site's `parity.toml`, each with its reason: 211 social cards and the theme's
+  fingerprinted CSS/JS (all M4).
+- 2. Alias targets: 0 mismatches across ~700 redirect stubs (legacy
+  WordPress/Jekyll URLs, 522 retired tags, `page/1/` stubs).
+- 3. Content links: 0 differences across 146 posts; 0 new broken links among
+  1,491 checked. 8 links are broken identically in the Hugo build (old
+  `wp-content` images, one bad fragment) and are reported, not failed.
+- 4. Feeds: 67 feeds, identical items in identical order. Of 147 home-feed
+  descriptions, 129 are identical; 13 differ only by the theme's heading-anchor
+  markup (M4); 5 differ in text (summary word counting around code blocks and
+  lists, and one closing quote goldmark leaves straight). Not failures; see
+  section 6.1.
+- Two builds byte-identical; `/rss.xml` == `/index.xml`; full build ~0.5 s (debug).
+
+Scope adjustments made during M2 (recorded rather than silent):
+
+- Parity item 3 compares links **inside the post body** only, with same-page
+  fragment links skipped, because navigation, tag lists, series/project boxes
+  and heading anchors are template features ported in M4. The broken-link
+  check covers every link on every page regardless.
+- Site-specific shortcodes (`block`, `column`, `grid`, `button`, `tip`,
+  `recent-posts`, `newsletter`) are minijinja templates in the site's
+  `templates/shortcodes/`, not built into ferrisite. Only `ref`, `relref` and
+  `highlight` are built in. This replaces section 6.3's "no user-defined
+  shortcodes in v1".
+- Render-hook equivalents (inline local SVGs, table wrapper) are config options
+  under `[markup]`, applied to Markdown images only (raw HTML `<img>` is left
+  alone, as with Hugo's hooks).
+
+Earlier milestone, M1: `ferrisite build` renders grahambrooks.com's posts,
 plain pages and paginated section lists with built-in templates. Open question O4
 (Content-Signal values) remains.
 
@@ -123,7 +158,8 @@ Two parity details matter because existing links depend on them:
   to `-`, punctuation dropped), or `#fragment` links and the table of contents
   break. A golden test pins this against Hugo's output for every heading in the
   corpus.
-- **Summaries** follow Hugo 0.134+: content before `<!--more-->`, else the
+- **Summaries** (known gap: 5 of 147 home-feed summaries end at a different
+  paragraph than Hugo's or differ in one quote; refine alongside M4) follow Hugo 0.134+: content before `<!--more-->`, else the
   `summary:` frontmatter, else **whole top-level blocks taken until the word
   count reaches 70** (never a cut paragraph). Checked against Hugo's feed
   descriptions; `description:` is not used for summaries.

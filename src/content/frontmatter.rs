@@ -125,7 +125,7 @@ pub fn parse_date(s: &str) -> Result<DateTime<FixedOffset>> {
     bail!("expected RFC 3339 or YYYY-MM-DD")
 }
 
-fn toml_to_yaml(v: toml::Value) -> Value {
+pub fn toml_to_yaml(v: toml::Value) -> Value {
     match v {
         toml::Value::String(s) => Value::String(s),
         toml::Value::Integer(i) => Value::Number(i.into()),

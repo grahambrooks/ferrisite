@@ -12,6 +12,10 @@ pub enum Kind {
     Home,
     Section,
     Page,
+    /// `content/<taxonomy>/_index.md`
+    Taxonomy,
+    /// `content/<taxonomy>/<term>/_index.md`
+    Term,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,9 +61,7 @@ pub fn discover(content_dir: &Path, taxonomy_dirs: &[String]) -> Result<Discover
             .collect::<Vec<_>>()
             .join("/");
         let top = rel.split('/').next().unwrap_or("");
-        if rel.contains('/') && taxonomy_dirs.iter().any(|t| t == top) {
-            continue; // taxonomy term files: M2
-        }
+        let in_taxonomy = rel.contains('/') && taxonomy_dirs.iter().any(|t| t == top);
         let ext = Path::new(&rel)
             .extension()
             .and_then(|e| e.to_str())
@@ -74,7 +76,16 @@ pub fn discover(content_dir: &Path, taxonomy_dirs: &[String]) -> Result<Discover
         };
         let raw = std::fs::read_to_string(&path).with_context(|| format!("reading {rel}"))?;
         let (fm, body) = frontmatter::split(&raw).with_context(|| format!("{rel}: frontmatter"))?;
-        let (kind, url) = url_for(&rel);
+        let (mut kind, url) = url_for(&rel);
+        if in_taxonomy {
+            kind = match (kind, rel.matches('/').count()) {
+                (Kind::Section, 1) => Kind::Taxonomy,
+                (Kind::Section, 2) => Kind::Term,
+                _ => bail!(
+                    "{rel}: taxonomy directories may only hold `_index` files for the taxonomy and its terms"
+                ),
+            };
+        }
         let section = if kind == Kind::Home || !rel.contains('/') {
             String::new()
         } else {
@@ -95,6 +106,7 @@ pub fn discover(content_dir: &Path, taxonomy_dirs: &[String]) -> Result<Discover
         .pages
         .iter()
         .filter(|p| p.kind == Kind::Page && !p.section.is_empty())
+        .filter(|p| !taxonomy_dirs.contains(&p.section))
         .map(|p| p.section.clone())
         .collect();
     sections.sort();

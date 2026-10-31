@@ -2,6 +2,7 @@
 
 use crate::config::Config;
 use crate::content;
+use crate::output;
 use crate::render::{OutputFile, Renderer};
 use crate::site::{self, Site, Visibility};
 use anyhow::{Context, Result, bail};
@@ -38,19 +39,53 @@ pub fn build(opts: &Options) -> Result<Report> {
         now: now()?,
     };
     let renderer = Renderer::new(&config, &opts.root.join("templates"))?;
-    let site = site::resolve(config, found, vis);
-    let files = renderer.render_site(&site)?;
+    let site = site::resolve(config, &opts.root, found, vis, &renderer)?;
+    let mut files = renderer.render_site(&site)?;
+    files.extend(output::all(&site));
+    files.sort_by(|a, b| a.path.cmp(&b.path));
+    if let Some(w) = files.windows(2).find(|w| w[0].path == w[1].path) {
+        bail!("two outputs claim {}", w[0].path);
+    }
 
     prepare_output(&opts.out)?;
-    let static_files = copy_dir(&opts.root.join("static"), &opts.out)?;
+    let mut static_paths = Vec::new();
+    for dir in &site.config.static_dirs {
+        copy_dir(
+            &opts.root.join(dir),
+            &opts.out,
+            Path::new(""),
+            &mut static_paths,
+        )?;
+    }
+    static_paths.sort();
+    static_paths.dedup();
+    if let Some(clash) = files
+        .iter()
+        .find(|f| static_paths.binary_search(&f.path).is_ok())
+    {
+        bail!(
+            "generated file {} would overwrite a static file",
+            clash.path
+        );
+    }
     write_files(&opts.out, &files)?;
-    Ok(report(&site, &files, static_files, ignored))
+    Ok(report(&site, &files, static_paths.len(), ignored))
 }
 
 fn report(site: &Site, files: &[OutputFile], static_files: usize, ignored: Vec<String>) -> Report {
     Report {
-        pages: site.regular.len(),
-        lists: site.sections.iter().map(|s| s.pagers.len()).sum(),
+        pages: site
+            .entries
+            .iter()
+            .filter(|e| e.page.kind == content::Kind::Page)
+            .count(),
+        lists: site.sections.iter().map(|s| s.pagers.len()).sum::<usize>()
+            + site
+                .taxonomies
+                .iter()
+                .flat_map(|t| &t.terms)
+                .map(|t| t.pagers.len())
+                .sum::<usize>(),
         files: files.len(),
         static_files,
         ignored,
@@ -105,24 +140,36 @@ fn write_files(out: &Path, files: &[OutputFile]) -> Result<()> {
     Ok(())
 }
 
-/// Copy `static/` verbatim to the output root. Returns the file count.
-fn copy_dir(from: &Path, to: &Path) -> Result<usize> {
-    if !from.is_dir() {
-        return Ok(0);
+/// Copy a static directory verbatim to the output root, recording the
+/// site-relative path of every file. A later directory overwrites an earlier
+/// one, as Hugo layers a site's `static/` over its theme's.
+fn copy_dir(from: &Path, out: &Path, rel: &Path, seen: &mut Vec<String>) -> Result<()> {
+    let src_dir = from.join(rel);
+    if !src_dir.is_dir() {
+        return Ok(());
     }
-    let mut count = 0;
-    let mut entries: Vec<_> = std::fs::read_dir(from)?.collect::<std::io::Result<_>>()?;
+    let mut entries: Vec<_> = std::fs::read_dir(&src_dir)?.collect::<std::io::Result<_>>()?;
     entries.sort_by_key(|e| e.file_name());
     for entry in entries {
-        let src = entry.path();
-        let dst = to.join(entry.file_name());
+        let name = entry.file_name();
+        if name.to_string_lossy() == ".DS_Store" {
+            continue;
+        }
+        let child = rel.join(&name);
         if entry.file_type()?.is_dir() {
-            std::fs::create_dir_all(&dst)?;
-            count += copy_dir(&src, &dst)?;
+            std::fs::create_dir_all(out.join(&child))?;
+            copy_dir(from, out, &child, seen)?;
         } else {
-            std::fs::copy(&src, &dst).with_context(|| format!("copying {}", src.display()))?;
-            count += 1;
+            std::fs::copy(entry.path(), out.join(&child))
+                .with_context(|| format!("copying {}", entry.path().display()))?;
+            seen.push(
+                child
+                    .components()
+                    .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+                    .join("/"),
+            );
         }
     }
-    Ok(count)
+    Ok(())
 }

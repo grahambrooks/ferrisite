@@ -1,6 +1,10 @@
 base_url = "https://example.test"
 title = "Fixture"
 taxonomies = ["tags"]
+home_feed_copies = ["rss.xml"]
 
 [pagination]
 page_size = 2
+
+[markup]
+inline_svg_from = "static"
