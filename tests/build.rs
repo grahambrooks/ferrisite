@@ -392,3 +392,127 @@ fn agent_readable_output_cards_and_check() {
     let report = ferrisite::check::run(&out, "https://e.test/", false, &known).unwrap();
     assert!(!report.failed() && report.known_broken.len() == 1);
 }
+
+#[test]
+fn template_context_terms_neighbours_toc_and_hooks() {
+    let post = |title: &str, date: &str, extra: &str, body: &str| {
+        format!("---\ntitle: \"{title}\"\ndate: {date}\n{extra}---\n{body}")
+    };
+    let (dir, root) = temp_site(&[
+        (
+            "ferrisite.toml",
+            "base_url = \"https://e.test/\"\ntitle = \"T\"\ntaxonomies = [\"tags\", \"series\", \"projects\"]\n\
+             [pagination]\npage_size = 1\n\
+             [sections.post]\nexclude = { release = true }\n\
+             [sections.releases]\nsource = \"post\"\ninclude = { release = true }\norder = \"date-reverse\"\n",
+        ),
+        (
+            "content/post/a.md",
+            &post(
+                "A",
+                "2026-01-01T00:00:00Z",
+                "series: [s]\nprojects: [tool]\ntags: [Rust]\n",
+                "## One\n\n### One.a\n\n## Two\n\nBody.\n",
+            ),
+        ),
+        (
+            "content/post/b.md",
+            &post("B", "2026-01-03T00:00:00Z", "series: [s]\n", "B.\n"),
+        ),
+        (
+            "content/post/r1.md",
+            &post(
+                "R1",
+                "2026-01-02T00:00:00Z",
+                "release: true\nprojects: [tool]\n",
+                "R1.\n",
+            ),
+        ),
+        (
+            "content/post/r2.md",
+            &post("R2", "2026-01-04T00:00:00Z", "release: true\n", "R2.\n"),
+        ),
+        ("content/releases/_index.md", "---\ntitle: Releases\n---\n"),
+        (
+            "content/series/s/_index.md",
+            "---\ntitle: The series\n---\n",
+        ),
+        (
+            "content/projects/tool/_index.md",
+            "---\ntitle: Tool\nweight: 3\nrepo: https://github.com/x/tool\ninstall: [\"brew install tool\"]\n---\n",
+        ),
+        (
+            "templates/markup/heading.html",
+            "<h{{ level }} id=\"{{ id }}\" class=hooked>{{ text }}</h{{ level }}>\n",
+        ),
+        (
+            "templates/single.html",
+            "{% for s in page.terms.series %}series={{ s.title }}:{% for p in s.pages_by_date %}{{ p.title }},{% endfor %}{% endfor %}\n\
+             {% for p in page.terms.projects %}project={{ p.title }}/{{ p.params.repo }}/{{ p.params.install[0] }}/{{ p.count }}/{{ p.weight }}{% endfor %}\n\
+             prev={% if page.prev %}{{ page.prev.title }}{% endif %} next={% if page.next %}{{ page.next.title }}{% endif %}\n\
+             kind={{ current.kind }} section={{ current.section }}\n\
+             toc={{ page.toc }}\n\
+             {{ page.content }}\n\
+             md={{ '## Hi' | markdownify }}\n\
+             plain={{ '<p>a <em>b</em></p><p>c</p>' | plainify }}|\n\
+             trunc={{ \"it's a long sentence\" | truncate(10) }}\n\
+             json={{ {'b': '<x>', 'a': 1} | jsonify }}\n\
+             unesc={{ 'it&rsquo;s' | html_unescape }}\n",
+        ),
+        (
+            "templates/list.html",
+            "{{ current.kind }}|{{ current.title }}|{{ current.date }}|{{ current.canonical }}|{{ pager.first }}|{{ pager.last }}|{% for p in pager.pages %}{{ p.number }}={{ p.url }};{% endfor %}|{% for i in pager.items %}{{ i.title }}{% endfor %}",
+        ),
+        (
+            "templates/taxonomy.html",
+            "{% for t in taxonomy.terms %}{{ t.key }}:{{ t.count }}:{{ t.weight }}:{% for p in t.pages %}{{ p.title }}{% endfor %};{% endfor %}|{{ current.date }}",
+        ),
+        (
+            "templates/404.html",
+            "{{ current.kind }}|{{ current.title }}|{{ recent | length }}",
+        ),
+    ]);
+    let out = dir.path().join("out");
+    build(&Options {
+        root,
+        out: out.clone(),
+        drafts: false,
+        future: false,
+        base_url: None,
+    })
+    .expect("build");
+
+    let a = read(&out, "post/a/index.html");
+    assert!(a.contains("series=The series:A,B,"), "{a}");
+    assert!(
+        a.contains("project=Tool/https://github.com/x/tool/brew install tool/2/3"),
+        "{a}"
+    );
+    // Essays link to essays: A's neighbours skip the release notes.
+    assert!(a.contains("prev= next=B"), "{a}");
+    assert!(a.contains("kind=page section=post"));
+    assert!(a.contains("toc=<nav id=\"TableOfContents\">\n  <ul>\n    <li><a href=\"#one\">One</a>\n      <ul>\n        <li><a href=\"#onea\">One.a</a></li>"), "{a}");
+    assert!(a.contains("<h2 id=\"one\" class=hooked>One</h2>"), "{a}");
+    assert!(a.contains("md=<h2 id=\"hi\" class=hooked>Hi</h2>"), "{a}");
+    assert!(a.contains("plain=a b\nc\n|"), "{a}");
+    assert!(a.contains("trunc=it&#39;s a …"), "{a}");
+    assert!(a.contains(r#"json={"a":1,"b":"\u003cx\u003e"}"#), "{a}");
+    assert!(a.contains("unesc=it’s"), "{a}");
+    // Release notes link to release notes.
+    let r1 = read(&out, "post/r1/index.html");
+    assert!(r1.contains("prev= next=R2"), "{r1}");
+
+    // A list page takes its newest page's date; pagers know every page.
+    let post = read(&out, "post/page/2/index.html");
+    assert_eq!(
+        post,
+        "section|Post|2026-01-04T00:00:00+00:00|https://e.test/post/|/post/|/post/page/2/|1=/post/;2=/post/page/2/;|A"
+    );
+    let releases = read(&out, "releases/index.html");
+    assert!(releases.ends_with("|R2"), "date-reverse order: {releases}");
+    let projects = read(&out, "projects/index.html");
+    assert_eq!(projects, "tool:2:3:R1A;|2026-01-02T00:00:00+00:00");
+    let tags = read(&out, "tags/index.html");
+    assert!(tags.starts_with("rust:1:0:A;"), "{tags}");
+    assert_eq!(read(&out, "404.html"), "404|404 Page not found|4");
+}

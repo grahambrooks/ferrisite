@@ -12,6 +12,7 @@ use crate::config::Config;
 use crate::content::Kind;
 use crate::markup::{self, Heading};
 use crate::site::{Brief, Entry, Pager, Section, Site, Taxonomy, Term};
+
 use anyhow::{Context, Result};
 use minijinja::{Environment, Value, context};
 use serde::Serialize;
@@ -39,6 +40,8 @@ struct SiteCtx {
     base_url: String,
     author: Option<String>,
     description: Option<String>,
+    copyright: Option<String>,
+    language: String,
     params: BTreeMap<String, toml::Value>,
     /// Absolute URL of the generated stylesheet (highlighting, diagram modes).
     stylesheet: String,
@@ -63,8 +66,30 @@ struct PageCtx<'a> {
     summary: Value,
     content: Option<Value>,
     headings: &'a [Heading],
+    /// Hugo's `.TableOfContents` HTML (levels 2–3); empty without headings.
+    toc: Value,
     word_count: usize,
     reading_time: usize,
+    params: &'a serde_yaml::Mapping,
+    /// Single pages only: taxonomy name → the page's terms, in frontmatter order.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    terms: Option<BTreeMap<&'a str, Vec<TermCtx<'a>>>>,
+    /// Single pages only: the previous (older) and next (newer) page in the
+    /// list that shows this page.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    prev: Option<LinkCtx<'a>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next: Option<LinkCtx<'a>>,
+}
+
+/// A page reference: enough to link to it or show it in a list.
+#[derive(Serialize)]
+struct LinkCtx<'a> {
+    title: &'a str,
+    url: &'a str,
+    permalink: String,
+    date: Option<String>,
+    summary: Value,
     params: &'a serde_yaml::Mapping,
 }
 
@@ -75,15 +100,33 @@ struct PagerCtx<'a> {
     total: usize,
     prev: Option<&'a str>,
     next: Option<&'a str>,
+    first: &'a str,
+    last: &'a str,
+    /// Every page of the list: `[{number, url}]`, for numbered pagination.
+    pages: Vec<PagerLink<'a>>,
     items: Vec<PageCtx<'a>>,
+}
+
+#[derive(Serialize)]
+struct PagerLink<'a> {
+    number: usize,
+    url: &'a str,
 }
 
 #[derive(Serialize)]
 struct TermCtx<'a> {
     name: &'a str,
+    /// `name` lowercased: the key Hugo's `.Data.Terms` uses.
+    key: String,
     title: &'a str,
     url: &'a str,
     count: usize,
+    /// Frontmatter of the term's `_index` file, if any.
+    params: Option<&'a serde_yaml::Mapping>,
+    weight: i64,
+    /// Member pages in the term list's order, and oldest first (`.ByDate`).
+    pages: Vec<LinkCtx<'a>>,
+    pages_by_date: Vec<LinkCtx<'a>>,
 }
 
 pub struct Renderer {
@@ -117,9 +160,34 @@ impl Renderer {
         }
         env.set_formatter(html_formatter);
         env.add_filter("date", date_filter);
-        env.add_filter("markdownify", |s: String| {
-            Value::from_safe_string(markup::markdownify(&s))
+        env.add_filter("markdownify", |state: &minijinja::State, s: String| {
+            let r = markup::markdown(&s);
+            let html = match state.env().get_template(HEADING_HOOK) {
+                Ok(t) => markup::toc::apply_hook(&r.html, &r.headings, &|h, inner| {
+                    Ok(heading_hook(&t, h, inner)?)
+                })
+                .map_err(|e| {
+                    minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, format!("{e:#}"))
+                })?,
+                Err(_) => r.html,
+            };
+            Ok::<_, minijinja::Error>(Value::from_safe_string(markup::unwrap_paragraph(&html)))
         });
+        env.add_filter("plainify", |v: Value| {
+            let out = crate::filters::plainify(&v.to_string());
+            if v.is_safe() {
+                Value::from_safe_string(out)
+            } else {
+                Value::from(out)
+            }
+        });
+        env.add_filter("html_unescape", |s: String| {
+            crate::filters::html_unescape(&s)
+        });
+        env.add_filter("truncate", |v: Value, n: usize| {
+            crate::filters::truncate(&v, n)
+        });
+        env.add_filter("jsonify", |v: Value| crate::filters::jsonify(&v));
         let card_base = config.base_url.clone();
         env.add_function("card", move |url: String| {
             format!("{card_base}{}", crate::cards::card_path(&url))
@@ -135,6 +203,8 @@ impl Renderer {
                 base_url: config.base_url.clone(),
                 author: config.author.clone(),
                 description: config.description.clone(),
+                copyright: config.copyright.clone(),
+                language: config.language.clone(),
                 params: config.params.clone(),
                 stylesheet: config.permalink(&config.markup.stylesheet),
                 content_signal: config.agents.content_signal.clone(),
@@ -181,6 +251,18 @@ impl Renderer {
         self.render(&[template], ctx).map(Some)
     }
 
+    /// Apply `markup/heading.html` (Hugo's heading render hook) to the
+    /// rendered headings in `html`; unchanged when the site has no such
+    /// template.
+    pub fn apply_heading_hook(&self, html: &str, headings: &[Heading]) -> Result<String> {
+        match self.env.get_template(HEADING_HOOK) {
+            Ok(t) => markup::toc::apply_hook(html, headings, &|h, inner| {
+                heading_hook(&t, h, inner).map_err(|e| anyhow::anyhow!("{HEADING_HOOK}: {e:#}"))
+            }),
+            Err(_) => Ok(html.to_string()),
+        }
+    }
+
     pub fn render_site(&self, site: &Site) -> Result<Vec<OutputFile>> {
         let site_ctx = ser(&self.site);
         let mut out = Vec::new();
@@ -219,7 +301,7 @@ impl Renderer {
                             site => site_ctx.clone(), current => self.current(site, &pager.url),
                             page => ser(&page),
                             section => section_ctx(section),
-                            pager => ser(&pager_ctx(site, pager)),
+                            pager => ser(&pager_ctx(site, &section.pagers, pager)),
                         },
                     )
                     .with_context(|| format!("rendering list {}", pager.url))?;
@@ -252,19 +334,29 @@ impl Renderer {
             path: "index.html".to_string(),
             contents: html,
         });
-        for (name, path) in [("404.html", "404.html"), ("robots.txt", "robots.txt")] {
-            out.push(OutputFile {
-                path: path.to_string(),
-                contents: self
-                    .render(&[name.to_string()], context! { site => site_ctx.clone() })
-                    .with_context(|| format!("rendering {name}"))?,
-            });
-        }
+        out.push(OutputFile {
+            path: "404.html".to_string(),
+            contents: self
+                .render(
+                    &["404.html".to_string()],
+                    context! { site => site_ctx.clone(), current => self.current(site, NOT_FOUND), recent => ser(&recent) },
+                )
+                .context("rendering 404.html")?,
+        });
+        out.push(OutputFile {
+            path: "robots.txt".to_string(),
+            contents: self
+                .render(
+                    &["robots.txt".to_string()],
+                    context! { site => site_ctx.clone() },
+                )
+                .context("rendering robots.txt")?,
+        });
         Ok(out)
     }
 
     fn render_taxonomy(&self, site: &Site, t: &Taxonomy, site_ctx: &Value) -> Result<OutputFile> {
-        let terms: Vec<TermCtx> = t.terms.iter().map(term_ctx).collect();
+        let terms: Vec<TermCtx> = t.terms.iter().map(|term| term_ctx(site, term)).collect();
         let page = t.index.map(|i| page_ctx(site, &site.entries[i], true));
         let html = self
             .render(
@@ -301,8 +393,8 @@ impl Renderer {
                             site => site_ctx.clone(), current => self.current(site, &pager.url),
                             page => ser(&page),
                             taxonomy => taxonomy.clone(),
-                            term => ser(&term_ctx(term)),
-                            pager => ser(&pager_ctx(site, pager)),
+                            term => ser(&term_ctx(site, term)),
+                            pager => ser(&pager_ctx(site, &term.pagers, pager)),
                         },
                     )
                     .with_context(|| format!("rendering {}", pager.url))?;
@@ -315,22 +407,34 @@ impl Renderer {
     }
 
     /// The page being rendered, whether or not it has a content file:
-    /// `url`, `permalink`, `markdown_url` (its agent-readable copy; the first
-    /// page's for paginated lists) and `card`.
+    /// `url`, `permalink`, `canonical` (the first page's permalink for
+    /// paginated lists), `markdown_url` (its agent-readable copy; the first
+    /// page's for paginated lists), `card`, `kind`, `section`, `title`, and
+    /// `date`/`lastmod` (a list page without its own takes its newest
+    /// page's, as Hugo does).
     fn current(&self, site: &Site, url: &str) -> Value {
         let first = match url.find("page/") {
             Some(i) => &url[..i],
             None => url,
         };
+        let info = describe(site, first);
+        let fmt = |d: Option<chrono::DateTime<chrono::FixedOffset>>| d.map(|d| d.to_rfc3339());
         context! {
             url => url,
             permalink => site.config.permalink(url),
-            markdown_url => crate::agents::md_url(site, first),
+            canonical => site.config.permalink(first),
+            // The 404 page has no Markdown copy.
+            markdown_url => (first != NOT_FOUND).then(|| crate::agents::md_url(site, first)),
             card => site
                 .config
                 .cards
                 .enabled
                 .then(|| site.config.permalink(&crate::cards::card_path(first))),
+            kind => info.kind,
+            section => info.section,
+            title => info.title,
+            date => fmt(info.date),
+            lastmod => fmt(info.lastmod),
         }
     }
 
@@ -345,13 +449,156 @@ impl Renderer {
     }
 }
 
-fn term_ctx(term: &Term) -> TermCtx<'_> {
+const HEADING_HOOK: &str = "markup/heading.html";
+
+/// URL of the not-found page, and its title (Hugo's).
+pub const NOT_FOUND: &str = "/404.html";
+pub const NOT_FOUND_TITLE: &str = "404 Page not found";
+
+fn heading_hook(
+    t: &minijinja::Template,
+    h: &Heading,
+    inner: &str,
+) -> Result<String, minijinja::Error> {
+    t.render(context! {
+        level => h.level,
+        id => &h.id,
+        text => Value::from_safe_string(inner.to_string()),
+        plain => &h.text,
+    })
+}
+
+struct Described<'a> {
+    kind: &'static str,
+    section: &'a str,
+    title: &'a str,
+    date: Option<chrono::DateTime<chrono::FixedOffset>>,
+    lastmod: Option<chrono::DateTime<chrono::FixedOffset>>,
+}
+
+/// What `current` says about the page at `url` (a first-page URL).
+fn describe<'a>(site: &'a Site, url: &str) -> Described<'a> {
+    let own = |i: Option<usize>| i.map(|i| &site.entries[i]);
+    let with_dates = |kind, section, title, entry: Option<&'a Entry>, items: Vec<usize>| {
+        let (newest, newest_mod) = site.newest(items);
+        let fm = entry.map(|e| &e.page.fm);
+        Described {
+            kind,
+            section,
+            title,
+            date: fm.and_then(|f| f.date).or(newest),
+            lastmod: fm.and_then(|f| f.lastmod.or(f.date)).or(newest_mod),
+        }
+    };
+    if url == "/" {
+        return with_dates(
+            "home",
+            "",
+            &site.config.title,
+            own(site.home),
+            site.regular.clone(),
+        );
+    }
+    if url == "/404.html" {
+        return Described {
+            kind: "404",
+            section: "",
+            title: "404 Page not found",
+            date: None,
+            lastmod: None,
+        };
+    }
+    if let Some(s) = site.sections.iter().find(|s| s.url == url) {
+        return with_dates("section", &s.name, &s.title, own(s.index), s.pages.clone());
+    }
+    for t in &site.taxonomies {
+        if t.url == url {
+            let all: Vec<usize> = t
+                .terms
+                .iter()
+                .flat_map(|term| term.pages.iter().copied())
+                .collect();
+            return with_dates("taxonomy", &t.name, &t.title, own(t.index), all);
+        }
+        if let Some(term) = t.terms.iter().find(|term| term.url == url) {
+            return with_dates(
+                "term",
+                &t.name,
+                &term.title,
+                own(term.index),
+                term.pages.clone(),
+            );
+        }
+    }
+    match site.entries.iter().find(|e| e.page.url == url) {
+        Some(e) => Described {
+            kind: "page",
+            section: &e.page.section,
+            title: e.title(),
+            date: e.page.fm.date,
+            lastmod: e.page.fm.lastmod.or(e.page.fm.date),
+        },
+        None => Described {
+            kind: "page",
+            section: "",
+            title: "",
+            date: None,
+            lastmod: None,
+        },
+    }
+}
+
+fn link_ctx<'a>(site: &'a Site, i: usize) -> LinkCtx<'a> {
+    let e = &site.entries[i];
+    LinkCtx {
+        title: e.title(),
+        url: &e.page.url,
+        permalink: site.config.permalink(&e.page.url),
+        date: e.page.fm.date.map(|d| d.to_rfc3339()),
+        summary: Value::from_safe_string(e.summary.clone()),
+        params: &e.page.fm.params,
+    }
+}
+
+fn term_ctx<'a>(site: &'a Site, term: &'a Term) -> TermCtx<'a> {
+    let index = term.index.map(|i| &site.entries[i].page.fm);
     TermCtx {
         name: &term.name,
+        key: term.name.to_lowercase(),
         title: &term.title,
         url: &term.url,
         count: term.pages.len(),
+        params: index.map(|fm| &fm.params),
+        weight: index.map(|fm| fm.weight).unwrap_or(0),
+        pages: term.pages.iter().map(|&i| link_ctx(site, i)).collect(),
+        pages_by_date: site
+            .by_date(&term.pages)
+            .into_iter()
+            .map(|i| link_ctx(site, i))
+            .collect(),
     }
+}
+
+/// The page's terms in each taxonomy, in frontmatter order.
+fn page_terms<'a>(site: &'a Site, e: &'a Entry) -> BTreeMap<&'a str, Vec<TermCtx<'a>>> {
+    site.taxonomies
+        .iter()
+        .map(|t| {
+            let names = e
+                .param(&t.name)
+                .map(crate::content::frontmatter::string_list)
+                .unwrap_or_default();
+            let terms = names
+                .iter()
+                .filter_map(|n| {
+                    let url = crate::site::term_url(&t.name, n);
+                    t.terms.iter().find(|term| term.url == url)
+                })
+                .map(|term| term_ctx(site, term))
+                .collect();
+            (t.name.as_str(), terms)
+        })
+        .collect()
 }
 
 fn collect_templates(
@@ -381,7 +628,22 @@ fn collect_templates(
 }
 
 fn page_ctx<'a>(site: &'a Site, e: &'a Entry, with_content: bool) -> PageCtx<'a> {
+    let single = with_content && e.page.kind == Kind::Page;
+    let (prev, next) = if single {
+        let me = site
+            .entries
+            .iter()
+            .position(|x| std::ptr::eq(x, e))
+            .expect("entry belongs to site");
+        site.neighbours[me]
+    } else {
+        (None, None)
+    };
     PageCtx {
+        toc: Value::from_safe_string(e.toc.clone()),
+        terms: single.then(|| page_terms(site, e)),
+        prev: prev.map(|i| link_ctx(site, i)),
+        next: next.map(|i| link_ctx(site, i)),
         kind: match e.page.kind {
             Kind::Home => "home",
             Kind::Section => "section",
@@ -411,13 +673,22 @@ fn page_ctx<'a>(site: &'a Site, e: &'a Entry, with_content: bool) -> PageCtx<'a>
     }
 }
 
-fn pager_ctx<'a>(site: &'a Site, pager: &'a Pager) -> PagerCtx<'a> {
+fn pager_ctx<'a>(site: &'a Site, pagers: &'a [Pager], pager: &'a Pager) -> PagerCtx<'a> {
     PagerCtx {
         url: &pager.url,
         number: pager.number,
         total: pager.total,
         prev: pager.prev.as_deref(),
         next: pager.next.as_deref(),
+        first: &pagers[0].url,
+        last: &pagers[pagers.len() - 1].url,
+        pages: pagers
+            .iter()
+            .map(|p| PagerLink {
+                number: p.number,
+                url: &p.url,
+            })
+            .collect(),
         items: pager
             .items
             .iter()

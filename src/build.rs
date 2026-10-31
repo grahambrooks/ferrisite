@@ -208,6 +208,11 @@ fn write_cards(
             jobs.push((term.url.clone(), term.title.clone(), author.clone()));
         }
     }
+    jobs.push((
+        crate::render::NOT_FOUND.to_string(),
+        crate::render::NOT_FOUND_TITLE.to_string(),
+        author.clone(),
+    ));
     jobs.sort();
     jobs.dedup_by(|a, b| a.0 == b.0);
     let rendered: Vec<(String, Vec<u8>)> = jobs

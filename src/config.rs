@@ -86,6 +86,10 @@ pub struct SectionConfig {
     /// Drop pages whose frontmatter matches every key/value.
     #[serde(default)]
     pub exclude: BTreeMap<String, toml::Value>,
+    /// Order of the HTML list: `default` (Hugo's default page order) or
+    /// `date-reverse` (Hugo's `.ByDate.Reverse`), as for feeds.
+    #[serde(default)]
+    pub order: FeedOrder,
 }
 
 #[derive(Debug, Clone, Deserialize)]

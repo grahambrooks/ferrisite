@@ -30,6 +30,9 @@ pub struct Entry {
     pub summary: String,
     pub plain: String,
     pub headings: Vec<Heading>,
+    /// Hugo's `.TableOfContents` (levels 2–3) for Markdown pages; empty
+    /// when the page has no headings.
+    pub toc: String,
     pub word_count: usize,
     pub reading_time: usize,
     /// The page as Markdown for agents (DESIGN.md section 9.1): the source
@@ -119,6 +122,44 @@ pub struct Site {
     pub sections: Vec<Section>,
     pub taxonomies: Vec<Taxonomy>,
     pub aliases: Vec<Alias>,
+    /// Per entry: the previous (older) and next (newer) page in date order
+    /// within the list the page belongs to (see `neighbours`).
+    pub neighbours: Vec<(Option<usize>, Option<usize>)>,
+}
+
+impl Site {
+    /// `items` in Hugo's `.ByDate` order: oldest first, by date to the
+    /// second, keeping the input order for equal dates (a stable sort, as
+    /// Hugo's). `.ByDate.Reverse` is this list reversed.
+    pub fn by_date(&self, items: &[usize]) -> Vec<usize> {
+        let mut v = items.to_vec();
+        v.sort_by_key(|&i| self.entries[i].date().map(|d| d.timestamp()));
+        v
+    }
+
+    /// The newest `date` and `lastmod` among `items`, which is what Hugo
+    /// gives a list page (home, section, taxonomy, term) without its own.
+    pub fn newest(
+        &self,
+        items: impl IntoIterator<Item = usize>,
+    ) -> (Option<DateTime<FixedOffset>>, Option<DateTime<FixedOffset>>) {
+        let mut date: Option<DateTime<FixedOffset>> = None;
+        let mut lastmod: Option<DateTime<FixedOffset>> = None;
+        for i in items {
+            let fm = &self.entries[i].page.fm;
+            if let Some(d) = fm.date
+                && date.is_none_or(|x| d > x)
+            {
+                date = Some(d);
+            }
+            if let Some(d) = fm.lastmod.or(fm.date)
+                && lastmod.is_none_or(|x| d > x)
+            {
+                lastmod = Some(d);
+            }
+        }
+        (date, lastmod)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -240,10 +281,13 @@ pub fn resolve(
         let own = in_section(&name);
         let cfg: SectionConfig = config.section(&name);
         let source = cfg.source.clone().unwrap_or_else(|| name.clone());
-        let list: Vec<usize> = in_section(&source)
+        let mut list: Vec<usize> = in_section(&source)
             .into_iter()
             .filter(|&i| filter_matches(&pages[i], &cfg.include, &cfg.exclude))
             .collect();
+        if cfg.order == crate::config::FeedOrder::DateReverse {
+            list.sort_by(|&a, &b| by_date_reverse(&pages[a], &pages[b]));
+        }
         let pagers = paginate(&url, &list, page_size);
         let feed = index.is_none_or(|i| outputs_allow(&pages[i], "rss"));
         let title = index
@@ -305,6 +349,7 @@ pub fn resolve(
 
     let home = entries.iter().position(|e| e.page.kind == Kind::Home);
     let aliases = collect_aliases(&entries, &sections, &taxonomies)?;
+    let neighbours = neighbours(&entries, &sections);
     Ok(Site {
         config,
         entries,
@@ -313,7 +358,49 @@ pub fn resolve(
         sections,
         taxonomies,
         aliases,
+        neighbours,
     })
+}
+
+/// Previous and next links for each regular page: its neighbours in date
+/// order within the section list that shows it — its own section's list if
+/// that includes it, else the first section list (by name) that does. So
+/// with `/post/` excluding release notes and `/releases/` listing them,
+/// essays link to essays and release notes to release notes. Pages in no
+/// list get none.
+fn neighbours(entries: &[Entry], sections: &[Section]) -> Vec<(Option<usize>, Option<usize>)> {
+    let ordered: Vec<Vec<usize>> = sections
+        .iter()
+        .map(|s| {
+            // Hugo's `.ByDate` over the default order, whatever the list's order.
+            let mut v = s.list.clone();
+            v.sort_by(|&a, &b| hugo_order(&entries[a].page, &entries[b].page));
+            v.sort_by_key(|&i| entries[i].date().map(|d| d.timestamp()));
+            v
+        })
+        .collect();
+    (0..entries.len())
+        .map(|i| {
+            if entries[i].page.kind != Kind::Page {
+                return (None, None);
+            }
+            let own = sections
+                .iter()
+                .position(|s| s.name == entries[i].page.section && s.list.contains(&i));
+            let Some(k) = own.or_else(|| sections.iter().position(|s| s.list.contains(&i))) else {
+                return (None, None);
+            };
+            let list = &ordered[k];
+            let at = list
+                .iter()
+                .position(|&j| j == i)
+                .expect("list contains page");
+            (
+                at.checked_sub(1).map(|p| list[p]),
+                list.get(at + 1).copied(),
+            )
+        })
+        .collect()
 }
 
 fn brief(config: &Config, p: &Page) -> Brief {
@@ -508,26 +595,43 @@ fn render_entry(page: Page, me: usize, env: &RenderEnv) -> Result<Entry> {
         }
     };
     rendered.html = hooks.apply(&rendered.html)?;
+    let toc = if page.format == Format::Markdown {
+        markup::toc::hugo_toc(&rendered.headings)
+    } else {
+        String::new()
+    };
     let plain = text::plain(&rendered.html)
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
-    let word_count = text::word_count(&rendered.html);
+    // Hugo's `.WordCount`: words in the content with tags stripped the way
+    // `plainify` does it (inline tags, such as highlighting spans, don't
+    // split words).
+    let word_count = crate::filters::plainify(&rendered.html)
+        .split_whitespace()
+        .count();
+    // Hugo's heading render hook (`markup/heading.html`) applies to Markdown
+    // headings in the content and in summaries.
+    let hook = |html: &str, headings: &[Heading]| -> Result<String> {
+        if page.format == Format::Markdown {
+            renderer.apply_heading_hook(html, headings)
+        } else {
+            Ok(html.to_string())
+        }
+    };
     let summary = if page.format == Format::AsciiDoc {
         text::auto_summary(&rendered.html, summary_length)
     } else if let Some((before, _)) = page.body.split_once("<!--more-->") {
-        markup::markdown_with_shortcodes(before, &expander, fences)?
-            .html
-            .trim_end()
-            .to_string()
+        let r = markup::markdown_with_shortcodes(before, &expander, fences)?;
+        hook(r.html.trim_end(), &r.headings)?
     } else if let Some(s) = &page.fm.summary {
-        markup::markdown_with_shortcodes(s, &expander, fences)?
-            .html
-            .trim_end()
-            .to_string()
+        let r = markup::markdown_with_shortcodes(s, &expander, fences)?;
+        hook(r.html.trim_end(), &r.headings)?
     } else {
-        text::auto_summary(&rendered.html, summary_length)
+        let auto = text::auto_summary(&rendered.html, summary_length);
+        hook(&auto, &rendered.headings)?
     };
+    rendered.html = hook(&rendered.html, &rendered.headings)?;
     let markdown = match page.format {
         Format::Markdown => {
             let md = MarkdownExpander { inner: &expander };
@@ -548,6 +652,7 @@ fn render_entry(page: Page, me: usize, env: &RenderEnv) -> Result<Entry> {
         summary,
         plain,
         headings: rendered.headings,
+        toc,
         content: rendered.html,
         page,
     })

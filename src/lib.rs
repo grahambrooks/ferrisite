@@ -7,6 +7,7 @@ pub mod check;
 pub mod config;
 pub mod content;
 pub mod diagrams;
+pub mod filters;
 pub mod markup;
 pub mod output;
 pub mod parity;

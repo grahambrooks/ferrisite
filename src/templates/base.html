@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ site.title }}{% endblock %}</title>
 <link rel="stylesheet" href="{{ site.stylesheet }}">
-{% if current %}<link rel="canonical" href="{{ current.permalink }}">
-<link rel="alternate" type="text/markdown" href="{{ current.markdown_url }}">{% endif %}
+{% if current %}<link rel="canonical" href="{{ current.canonical }}">
+{% if current.markdown_url %}<link rel="alternate" type="text/markdown" href="{{ current.markdown_url }}">{% endif %}{% endif %}
 {% if page and page.description %}<meta name="description" content="{{ page.description }}">{% elif site.description %}<meta name="description" content="{{ site.description }}">{% endif %}
 </head>
 <body>

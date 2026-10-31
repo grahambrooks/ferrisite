@@ -7,6 +7,7 @@ pub mod asciidoc;
 pub mod highlight;
 pub mod shortcodes;
 pub mod text;
+pub mod toc;
 
 use crate::diagrams::{Diagrams, Lang};
 use anchor::IdFactory;
@@ -26,7 +27,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 pub struct Heading {
     pub level: u8,
     pub id: String,
+    /// Plain text.
     pub text: String,
+    /// Rendered inner HTML (Markdown only; empty for AsciiDoc).
+    pub html: String,
 }
 
 #[derive(Debug, Clone)]
@@ -67,6 +71,7 @@ impl HeadingAdapter for Headings {
             level: heading.level,
             id: id.clone(),
             text: heading.content.clone(),
+            html: String::new(),
         });
         write!(output, "<h{} id=\"{}\">", heading.level, id)
     }
@@ -260,7 +265,8 @@ pub fn markdown_with(
     if !errors.is_empty() {
         anyhow::bail!("{}", errors.join("\n"));
     }
-    let (_, headings) = adapter.state.into_inner().expect("heading state");
+    let (_, mut headings) = adapter.state.into_inner().expect("heading state");
+    toc::fill_html(&html, &mut headings);
     Ok(Rendered { html, headings })
 }
 
@@ -278,6 +284,7 @@ pub fn markdown_with_shortcodes(
         rendered.html = shortcodes::substitute(&rendered.html, &outputs);
         for h in &mut rendered.headings {
             h.text = shortcodes::substitute(&h.text, &outputs);
+            h.html = shortcodes::substitute(&h.html, &outputs);
         }
     }
     Ok(rendered)
@@ -367,7 +374,11 @@ fn inline_svgs(html: &str, dir: &std::path::Path) -> anyhow::Result<String> {
 /// Hugo's `markdownify`: render Markdown, and drop the `<p>` wrapper when the
 /// result is a single paragraph.
 pub fn markdownify(source: &str) -> String {
-    let html = markdown(source).html;
+    unwrap_paragraph(&markdown(source).html)
+}
+
+/// Drop the `<p>` wrapper of HTML that is a single paragraph.
+pub fn unwrap_paragraph(html: &str) -> String {
     let trimmed = html.trim_end();
     if let Some(inner) = trimmed
         .strip_prefix("<p>")
@@ -376,7 +387,7 @@ pub fn markdownify(source: &str) -> String {
     {
         return inner.to_string();
     }
-    html
+    html.to_string()
 }
 
 #[cfg(test)]

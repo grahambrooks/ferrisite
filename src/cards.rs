@@ -26,6 +26,7 @@ pub struct Cards {
 
 /// Site-relative path of a page's card: `/post/x/` → `images/cards/post-x.png`.
 pub fn card_path(url: &str) -> String {
+    let url = url.strip_suffix(".html").unwrap_or(url);
     let slug = url.trim_matches('/').replace('/', "-");
     let slug = if slug.is_empty() {
         "home".to_string()
@@ -237,6 +238,7 @@ mod tests {
     fn card_paths() {
         assert_eq!(card_path("/"), "images/cards/home.png");
         assert_eq!(card_path("/post/x/"), "images/cards/post-x.png");
+        assert_eq!(card_path("/404.html"), "images/cards/404.png");
     }
 
     #[test]

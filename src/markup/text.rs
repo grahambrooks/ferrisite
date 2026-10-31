@@ -32,9 +32,10 @@ pub fn word_count(html: &str) -> usize {
     plain(html).split_whitespace().count()
 }
 
-/// Minutes, rounded up, at Hugo's 213 words per minute.
+/// Hugo's `.ReadingTime`: `(words + 211) / 212` minutes, so 0 for an empty
+/// page.
 pub fn reading_time(words: usize) -> usize {
-    words.div_ceil(213).max(1)
+    words.div_ceil(212)
 }
 
 /// Hugo's automatic summary (0.134+): whole top-level blocks of the rendered
@@ -108,8 +109,10 @@ mod tests {
     #[test]
     fn plain_and_counts() {
         assert_eq!(word_count("<p>One <em>two</em> three&amp;four</p>"), 3);
+        assert_eq!(reading_time(0), 0);
         assert_eq!(reading_time(1), 1);
-        assert_eq!(reading_time(214), 2);
+        assert_eq!(reading_time(212), 1);
+        assert_eq!(reading_time(213), 2);
     }
 
     #[test]

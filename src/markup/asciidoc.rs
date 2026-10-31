@@ -179,6 +179,7 @@ fn headings(html: &str) -> Vec<Heading> {
             level: level as u8,
             id,
             text,
+            html: String::new(),
         });
     }
     out

@@ -1,6 +1,36 @@
 # ferrisite design
 
-Status: **M3 implemented, 2026-10-31; one criterion blocked on puml.**
+Status: **M4 implemented, with grahambrooks.com's templates ported, 2026-10-31;
+one M3 criterion blocked on puml.**
+
+**Template port (section 8), 2026-10-31:** grahambrooks.com's Hugo layouts
+and the Compose theme partials they use are minijinja templates in the site's
+`templates/`. The theme's compiled CSS and fingerprinted JS are vendored
+under Hugo's file names (`ferrisite-static/`), so URLs match.
+
+- Parity item 3 now compares links on **whole pages**, every page Hugo
+  generates (254), with no content regions: 0 differences. Links only
+  ferrisite has are listed with reasons (`ignore_links`: the generated
+  stylesheet, Markdown alternates). Script contents are no longer scanned for
+  links. The only ignored reference files are Hugo's social cards.
+- Token-level comparison of every page (tags, attributes and text, entities
+  decoded, whitespace collapsed, code blocks set aside): all non-post pages
+  match except list summaries truncated at 200 characters, where Hugo counts
+  goldmark's entity spelling (`&rsquo;` is 7 characters) and ferrisite the
+  character, and the home page's itemprop description (its automatic summary,
+  section 6.1). Posts differ only in Markdown rendering already accepted in
+  M1–M3 (smart quotes, autolinks, table alignment), diagrams and
+  highlighting. Screenshots of home, a post, `/post/`, a tag page, `/tags/`,
+  `/projects/`, a project and `/series/` are pixel-identical apart from those
+  summaries and code blocks: the theme's script adds language labels and
+  shell prompts only to Chroma's markup (`data-lang`).
+- Added for templates (TEMPLATES.md): `current.kind/section/title/date/
+  lastmod/canonical`, `page.toc`, `page.terms`, `page.prev/next`, term
+  objects with `params`, `weight`, `pages`, `pages_by_date`; pager `first`,
+  `last`, `pages`; the `markup/heading.html` hook; Hugo-exact `plainify`,
+  `html_unescape`, `truncate`, `jsonify`; `[sections.*] order`; `build
+  --base-url`; a 404 card. `.WordCount` and `.ReadingTime` now follow Hugo
+  (inline tags no longer split words; 212 words a minute, rounded up).
 
 **M3 results:**
 
@@ -385,7 +415,9 @@ This is the gate for M2 onward. It compares two built sites:
 2. **Alias stubs**: each redirect points at the same target.
 3. **Internal link graph**: for each HTML page, the set of internal link
    targets (fragments included) matches, after normalising absolute and
-   relative forms. Broken links in either build are reported.
+   relative forms. Whole pages, or a configured region; links one build has
+   by design can be ignored with a reason. Script contents aren't links.
+   Broken links in either build are reported.
 4. **Feeds**: per feed, the item list (guid, link, title, pubDate) matches in
    order; description differences are reported but don't fail, while summary
    rules settle.
