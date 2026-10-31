@@ -1,0 +1,57 @@
+src/agents.rs
+  s_38439ae326f7ae::t_af2d83a499219e 1-296
+  s_38439ae326f7ae::t_05b322366d9ae2 297-318
+src/check.rs
+  s_38439ae326f7ae::t_9bdfeb27d9b3a9 1-85
+  s_38439ae326f7ae::t_b9760ab80d9949 86-112
+src/cards.rs
+  s_38439ae326f7ae::t_5c800d30144f0b 1-260
+  s_38439ae326f7ae::t_fc464ae3f19d56 261-274
+src/serve.rs
+  s_38439ae326f7ae::t_5b8983d76bb358 1-159
+  s_38439ae326f7ae::t_1842acd7c6bf71 160-170
+.gitignore
+  s_38439ae326f7ae::t_cf3c865e516f02 2-4
+Cargo.lock
+  s_38439ae326f7ae::t_8e717a1e4d240f 241-246,333-338,576,584-585,698-707,859-868,1466-1471,1571-1572,1579,2328,2441-2446,2641-2655
+Cargo.toml
+  s_38439ae326f7ae::t_34bdcf3ddbc32b 33-35
+src/build.rs
+  s_38439ae326f7ae::t_4d7ddb1f89435f 15-16,24-25,37-44,68,97-102,173-232
+src/config.rs
+  s_38439ae326f7ae::t_ee4f8ba9f551a0 46-54,165-277
+src/lib.rs
+  s_38439ae326f7ae::t_2fca319dc3a962 3,5-6,14
+src/main.rs
+  s_38439ae326f7ae::t_fd33bb8333f91f 32-59,89,109-143
+src/output.rs
+  s_38439ae326f7ae::t_0977a1c5143457 26-27,277-364
+src/parity.rs
+  s_38439ae326f7ae::t_e8c75ea4b76e3c 305,347
+src/render.rs
+  s_38439ae326f7ae::t_324a4e413bbd63 45-46,55-58,123-126,140,157-170,199,219,248,273,301,317-336,368,395-400
+src/site.rs
+  s_38439ae326f7ae::t_4f1a3f49319e0f 35-38,143,276,531-543,545,564-623,799-807
+src/templates/base.html
+  s_38439ae326f7ae::t_0d655d4b332bb9 8-9
+src/templates/robots.txt
+  s_38439ae326f7ae::t_74163e1c7da60c 3-4
+tests/build.rs
+  s_38439ae326f7ae::t_d06358dafd51b7 19,148,216,276,307,317-394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36f2ffd6a2febb087788293045b1eaad479739a9",
+  "prompts": {},
+  "sessions": {
+    "s_38439ae326f7ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e88d1d-b3bb-451e-9770-aa1214b3f499",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Graham Brooks <graham@grahambrooks.com>"
+    }
+  }
+}
