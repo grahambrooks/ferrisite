@@ -111,8 +111,8 @@ Scope adjustments made during M2 (recorded rather than silent):
   alone, as with Hugo's hooks).
 
 Earlier milestone, M1: `ferrisite build` renders grahambrooks.com's posts,
-plain pages and paginated section lists with built-in templates. Open question O4
-(Content-Signal values) remains.
+plain pages and paginated section lists with built-in templates. All open
+questions are decided.
 
 M1 results against the Hugo 0.169 build of the same commit:
 
@@ -353,7 +353,7 @@ large sites) with values from config, for example
 `search=yes, ai-input=yes, ai-train=no`. The emitter is written so an IETF
 aipref `Content-Usage` line can be added when that draft reaches RFC (it's
 still an Internet-Draft as of September 2026). The values are Graham's call
-(open question O4).
+(O4, decided).
 
 ### 9.4 Structured data (adopt; mostly exists today)
 
@@ -473,15 +473,13 @@ Decided 2026-10-31:
   with CSS on `html[data-mode]` (section 7).
 - **O3. Content-Type for `.md`:** assume the host serves it suitably; verify
   after the first deploy.
+- **O4. Content-Signal values** for robots.txt (section 9.3). Decided
+  2026-10-31: `search=yes, ai-input=yes, ai-train=no` (search and AI answers
+  yes, training no). Set in the site's `[agents] content_signal`; ferrisite
+  emits no line when it's unset.
 - **O5. `lastmod`:** frontmatter only (`lastmod`, else `date`).
 - **O6. Theme:** keep the Compose look, with its compiled CSS vendored into the
   site repo.
-
-Still open:
-
-- **O4. Content-Signal values** for robots.txt (section 9.3), for example
-  `search=yes, ai-input=yes, ai-train=no`. Until Graham decides, ferrisite
-  emits no `Content-Signal` line.
 
 ## Sources (agent-readable output review, 2026-10-31)
 
