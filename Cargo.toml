@@ -26,8 +26,8 @@ mmd = { git = "https://github.com/grahambrooks/mmd", tag = "v2026.10.25" }
 puml = { git = "https://github.com/grahambrooks/puml", rev = "ca53ae8" }
 forge-dsl = { git = "https://github.com/grahambrooks/forge", tag = "v2026.10.25", default-features = false }
 diagram-scene = { git = "https://github.com/grahambrooks/diagram-scene", tag = "v2026.10.25" }
-# Pinned by revision for the include-target attribute fix (945af53), unreleased.
-adoc = { git = "https://github.com/grahambrooks/adoc", rev = "945af53" }
+# Pinned by revision for include-target attributes (945af53) and thematic breaks (4ceaddb), unreleased.
+adoc = { git = "https://github.com/grahambrooks/adoc", rev = "4ceaddb" }
 camino = "1"
 # Pure-Rust regex engine (fancy-regex); the default onig engine is C.
 syntect = { version = "5", default-features = false, features = ["default-fancy"] }
