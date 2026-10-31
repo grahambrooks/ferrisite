@@ -33,7 +33,7 @@ only loop and print.
 
 | Field | Notes |
 |---|---|
-| `kind` | `home`, `section` or `page` |
+| `kind` | `home`, `section`, `page`, `taxonomy` or `term` |
 | `title`, `url`, `permalink` | `url` is site-relative (`/post/foo/`); `permalink` is absolute |
 | `section` | First directory under `content/`; empty for top-level pages |
 | `date`, `lastmod` | RFC 3339 strings, or none. `lastmod` falls back to `date` |
