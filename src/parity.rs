@@ -11,7 +11,7 @@
 //!
 //! Feed description differences are counted but don't fail the run.
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -45,8 +45,16 @@ pub struct ContentRegions {
     /// contents) when comparing; the broken-link check still verifies them.
     #[serde(default)]
     pub ignore_self_fragments: bool,
-    pub reference: Region,
-    pub candidate: Region,
+    /// Links left out of the comparison on both sides, each with a reason:
+    /// site-relative globs (`*` within a segment, `**` across).
+    #[serde(default)]
+    pub ignore_links: Vec<Ignore>,
+    /// The part of each page to compare; the whole page when neither is
+    /// given. Give both or neither.
+    #[serde(default)]
+    pub reference: Option<Region>,
+    #[serde(default)]
+    pub candidate: Option<Region>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -207,10 +215,14 @@ pub fn compare(reference: &Path, candidate: &Path, cfg: &ParityConfig) -> Result
                 continue;
             }
             let cand_html = read(candidate, f)?;
-            let (Some(a), Some(b)) = (
-                region(&ref_html, &content.reference),
-                region(&cand_html, &content.candidate),
-            ) else {
+            let regions = match (&content.reference, &content.candidate) {
+                (Some(ra), Some(rb)) => (region(&ref_html, ra), region(&cand_html, rb)),
+                (None, None) => (Some(ref_html.clone()), Some(cand_html.clone())),
+                _ => {
+                    bail!("parity config: [content.reference] and [content.candidate] go together")
+                }
+            };
+            let (Some(a), Some(b)) = regions else {
                 r.content_link_mismatches
                     .push(format!("{f}: content region markers not found"));
                 continue;
@@ -223,6 +235,10 @@ pub fn compare(reference: &Path, candidate: &Path, cfg: &ParityConfig) -> Result
                 let own = format!("{page_url}#");
                 la.retain(|l| !l.starts_with(&own));
                 lb.retain(|l| !l.starts_with(&own));
+            }
+            for ig in &content.ignore_links {
+                la.retain(|l| !glob(&ig.pattern, l));
+                lb.retain(|l| !glob(&ig.pattern, l));
             }
             if la != lb {
                 let only_ref: Vec<_> = la.difference(&lb).take(3).cloned().collect();
@@ -435,12 +451,38 @@ fn url_of(file: &str) -> String {
     }
 }
 
+/// `html` with the contents of `<script>` elements removed (the tags, and
+/// so their `src`, stay): text in scripts isn't markup, even when it looks
+/// like an attribute, such as a JavaScript template literal building
+/// `<use href="#${id}">`.
+fn without_script_bodies(html: &str) -> std::borrow::Cow<'_, str> {
+    if !html.contains("<script") {
+        return std::borrow::Cow::Borrowed(html);
+    }
+    let mut out = String::with_capacity(html.len());
+    let mut rest = html;
+    while let Some(i) = rest.find("<script") {
+        let Some(open_end) = rest[i..].find('>').map(|e| i + e + 1) else {
+            break;
+        };
+        out.push_str(&rest[..open_end]);
+        rest = &rest[open_end..];
+        match rest.find("</script") {
+            Some(close) => rest = &rest[close..],
+            None => rest = "",
+        }
+    }
+    out.push_str(rest);
+    std::borrow::Cow::Owned(out)
+}
+
 /// Internal link targets in `html`, normalised to site-relative paths with
-/// fragments kept (`/post/x/#heading`).
+/// fragments kept (`/post/x/#heading`). Script contents are skipped.
 pub fn internal_links(html: &str, page_url: &str, base_url: &str) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
+    let html = without_script_bodies(html);
     for attr in ["href=", "src="] {
-        let mut rest = html;
+        let mut rest = &html[..];
         while let Some(i) = rest.find(attr) {
             let after = &rest[i + attr.len()..];
             rest = after;
@@ -674,6 +716,16 @@ mod tests {
         assert!(glob("post/*/index.html", "post/x/index.html"));
         assert!(glob("**/*.css", "a/b/c.css"));
         assert!(glob("js/**", "js/x/y.js"));
+    }
+
+    #[test]
+    fn script_contents_are_not_links() {
+        let html = "<script src=\"/js/a.js\"></script><script>x=`<use href=\"#${e}\">`</script><a href=\"/b/\">b</a>";
+        let links = internal_links(html, "/", "https://www.e.com/");
+        assert_eq!(
+            links.into_iter().collect::<Vec<_>>(),
+            vec!["/b/".to_string(), "/js/a.js".to_string()]
+        );
     }
 
     #[test]
