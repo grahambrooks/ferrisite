@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title or section.name }} | {{ site.title }}{% endblock %}
+{% block main %}
+<h1>{{ page.title or section.name }}</h1>
+{% for item in pager.items %}
+<article>
+<h2><a href="{{ item.url }}">{{ item.title }}</a></h2>
+{% if item.date %}<time datetime="{{ item.date | date('%Y-%m-%d') }}">{{ item.date | date('%b %-d, %Y') }}</time>{% endif %}
+{{ item.summary }}
+</article>
+{% endfor %}
+<nav>
+{% if pager.prev %}<a href="{{ pager.prev }}">Newer</a>{% endif %}
+<span>Page {{ pager.number }} of {{ pager.total }}</span>
+{% if pager.next %}<a href="{{ pager.next }}">Older</a>{% endif %}
+</nav>
+{% endblock %}

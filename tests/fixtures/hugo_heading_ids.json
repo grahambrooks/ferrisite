@@ -1,0 +1,1774 @@
+{
+ "2009-07-18-java-properties-handling-1": [
+  {
+   "md": "## Requirements",
+   "id": "requirements"
+  }
+ ],
+ "2010-02-28-face-to-face-pairing": [
+  {
+   "md": "## Yesterday",
+   "id": "yesterday"
+  },
+  {
+   "md": "## What went well",
+   "id": "what-went-well"
+  }
+ ],
+ "2010-03-27-post-redirect-get-web-interaction-pattern": [
+  {
+   "md": "## Post-Redirect-Get pattern",
+   "id": "post-redirect-get-pattern"
+  },
+  {
+   "md": "## On the server side",
+   "id": "on-the-server-side"
+  },
+  {
+   "md": "### Model",
+   "id": "model"
+  },
+  {
+   "md": "### View",
+   "id": "view"
+  },
+  {
+   "md": "### Presenter",
+   "id": "presenter"
+  },
+  {
+   "md": "### Command",
+   "id": "command"
+  },
+  {
+   "md": "## Putting things together",
+   "id": "putting-things-together"
+  }
+ ],
+ "2010-06-30-agile-software-development-and-golf": [
+  {
+   "md": "## Teeing off",
+   "id": "teeing-off"
+  },
+  {
+   "md": "## The drop shot",
+   "id": "the-drop-shot"
+  }
+ ],
+ "2010-10-20-technology-synergy": [
+  {
+   "md": "## In memory tests",
+   "id": "in-memory-tests"
+  },
+  {
+   "md": "## Simple transaction boundaries",
+   "id": "simple-transaction-boundaries"
+  },
+  {
+   "md": "## No Session State just persistent documents",
+   "id": "no-session-state-just-persistent-documents"
+  },
+  {
+   "md": "## RESTful",
+   "id": "restful"
+  },
+  {
+   "md": "## [Post/Redirect/Get pattern](http://en.wikipedia.org/wiki/Post/Redirect/Get)",
+   "id": "postredirectget-pattern"
+  },
+  {
+   "md": "## Simple transaction boundaries",
+   "id": "simple-transaction-boundaries-1"
+  },
+  {
+   "md": "## [Extended SiteMesh](http://www.opensymphony.com/sitemesh/)",
+   "id": "extended-sitemesh"
+  },
+  {
+   "md": "## [AHAH (Asynchronous HTML and HTTP)](http://microformats.org/wiki/rest/ahah)",
+   "id": "ahah-asynchronous-html-and-http"
+  },
+  {
+   "md": "## No Session State just persistent documents",
+   "id": "no-session-state-just-persistent-documents-1"
+  },
+  {
+   "md": "## In memory tests",
+   "id": "in-memory-tests-1"
+  },
+  {
+   "md": "## [Progressive Enhancement and Accessibility](http://en.wikipedia.org/wiki/Progressive_Enhancement)",
+   "id": "progressive-enhancement-and-accessibility"
+  },
+  {
+   "md": "## [NO Logic in the View](http://www.stringtemplate.org/)",
+   "id": "no-logic-in-the-view"
+  }
+ ],
+ "2010-12-24-emacs-package-manager": [
+  {
+   "md": "## ELPA installation instructions (copied from the ELPA site)",
+   "id": "elpa-installation-instructions-copied-from-the-elpa-site"
+  }
+ ],
+ "2010-12-24-progressive-enhancement": [
+  {
+   "md": "## [Segmentation by Freshness](http://martinfowler.com/bliki/SegmentationByFreshness.html)",
+   "id": "segmentation-by-freshness"
+  },
+  {
+   "md": "## Included Function",
+   "id": "included-function"
+  }
+ ],
+ "2011-01-24-create-mysql-database-with-capistrano": [
+  {
+   "md": "## Does the database exist?",
+   "id": "does-the-database-exist"
+  },
+  {
+   "md": "## Create database",
+   "id": "create-database"
+  },
+  {
+   "md": "## Grant Permissions",
+   "id": "grant-permissions"
+  }
+ ],
+ "2011-07-07-insulating-against-failure-using-caching-reverse-proxies": [
+  {
+   "md": "## Attributes of this design",
+   "id": "attributes-of-this-design"
+  }
+ ],
+ "2011-08-11-encapsulating-databases": [
+  {
+   "md": "## Simple Table dependency",
+   "id": "simple-table-dependency"
+  },
+  {
+   "md": "## Upgrades requiring database changes",
+   "id": "upgrades-requiring-database-changes"
+  },
+  {
+   "md": "## Encapsulating the database - single adaptor",
+   "id": "encapsulating-the-database---single-adaptor"
+  },
+  {
+   "md": "## Encapsulating database - multiple adaptor instances",
+   "id": "encapsulating-database---multiple-adaptor-instances"
+  }
+ ],
+ "2012-01-02-metrics-based-refactoring-for-cleaner-code": [
+  {
+   "md": "## Volatile and Toxic - Refactor Now!",
+   "id": "volatile-and-toxic---refactor-now"
+  },
+  {
+   "md": "## Stable but Toxic - Refactor Later",
+   "id": "stable-but-toxic---refactor-later"
+  },
+  {
+   "md": "## Volatile but Clean",
+   "id": "volatile-but-clean"
+  },
+  {
+   "md": "## Stable and Clean",
+   "id": "stable-and-clean"
+  }
+ ],
+ "2012-12-31-drying-out-code": [
+  {
+   "md": "## Buckets",
+   "id": "buckets"
+  }
+ ],
+ "2013-02-06-i-cant-believe-i-missed-this": [
+  {
+   "md": "## Traditional Thinking",
+   "id": "traditional-thinking"
+  },
+  {
+   "md": "### Dynamic interpreted languages",
+   "id": "dynamic-interpreted-languages"
+  },
+  {
+   "md": "## Design is hard",
+   "id": "design-is-hard"
+  }
+ ],
+ "2013-08-29-zero-down-time-relational-databases": [
+  {
+   "md": "## Blue/Green releases",
+   "id": "bluegreen-releases"
+  },
+  {
+   "md": "## Backward and Forward  compatible database",
+   "id": "backward-and-forward--compatible-database"
+  },
+  {
+   "md": "## Worked Example",
+   "id": "worked-example"
+  },
+  {
+   "md": "## Tech",
+   "id": "tech"
+  },
+  {
+   "md": "## Development tools",
+   "id": "development-tools"
+  },
+  {
+   "md": "## Update basic flow",
+   "id": "update-basic-flow"
+  },
+  {
+   "md": "## Setting up Version 1",
+   "id": "setting-up-version-1"
+  },
+  {
+   "md": "## Setting up to install version 2",
+   "id": "setting-up-to-install-version-2"
+  },
+  {
+   "md": "## Summary",
+   "id": "summary"
+  }
+ ],
+ "2013-11-15-java-build-tools-2013": [
+  {
+   "md": "## Candidates",
+   "id": "candidates"
+  },
+  {
+   "md": "### [Ant](http://ant.apache.org) & [Ivy](http://ant.apache.org/ivy/)",
+   "id": "ant--ivy"
+  },
+  {
+   "md": "### [Maven](http://maven.apache.org)",
+   "id": "maven"
+  },
+  {
+   "md": "### [Raven](http://raven.rubyforge.org) & [Rake](http://rake.rubyforge.org)",
+   "id": "raven--rake"
+  },
+  {
+   "md": "### [Gradle](http://www.gradle.org)",
+   "id": "gradle"
+  },
+  {
+   "md": "### [Buildr](http://buildr.apache.org)",
+   "id": "buildr"
+  }
+ ],
+ "2013-12-06-boost-program_options": [
+  {
+   "md": "## Basic use case",
+   "id": "basic-use-case"
+  },
+  {
+   "md": "## Test: Invalid argument",
+   "id": "test-invalid-argument"
+  },
+  {
+   "md": "## Test: Accepting a switch",
+   "id": "test-accepting-a-switch"
+  },
+  {
+   "md": "## Test: Accepting a value argument",
+   "id": "test-accepting-a-value-argument"
+  },
+  {
+   "md": "## Test: Filename parameter list",
+   "id": "test-filename-parameter-list"
+  },
+  {
+   "md": "## Test: Main method to run the tests",
+   "id": "test-main-method-to-run-the-tests"
+  },
+  {
+   "md": "## Application bootstrap",
+   "id": "application-bootstrap"
+  },
+  {
+   "md": "## Main application class",
+   "id": "main-application-class"
+  },
+  {
+   "md": "## The command line processing classes",
+   "id": "the-command-line-processing-classes"
+  }
+ ],
+ "2014-02-23-lazybuilder-v0-3": [
+  {
+   "md": "### Roadmap",
+   "id": "roadmap"
+  },
+  {
+   "md": "### Installation",
+   "id": "installation"
+  },
+  {
+   "md": "### From Source",
+   "id": "from-source"
+  }
+ ],
+ "2014-03-31-team-distribution-models": [
+  {
+   "md": "## Conways law",
+   "id": "conways-law"
+  },
+  {
+   "md": "## Degrees of separation",
+   "id": "degrees-of-separation"
+  },
+  {
+   "md": "### Assumptions",
+   "id": "assumptions"
+  },
+  {
+   "md": "### Risks",
+   "id": "risks"
+  },
+  {
+   "md": "## Co-location",
+   "id": "co-location"
+  },
+  {
+   "md": "## Multi-location",
+   "id": "multi-location"
+  },
+  {
+   "md": "### Bridgehead",
+   "id": "bridgehead"
+  },
+  {
+   "md": "### Scattered",
+   "id": "scattered"
+  },
+  {
+   "md": "## Temporal distribution",
+   "id": "temporal-distribution"
+  }
+ ],
+ "2014-04-07-container-less-web-applications": [
+  {
+   "md": "## Drivers for change",
+   "id": "drivers-for-change"
+  },
+  {
+   "md": "### Lower Cost",
+   "id": "lower-cost"
+  },
+  {
+   "md": "### Productive",
+   "id": "productive"
+  },
+  {
+   "md": "### Testable",
+   "id": "testable"
+  },
+  {
+   "md": "### Configuration",
+   "id": "configuration"
+  },
+  {
+   "md": "### State Replication",
+   "id": "state-replication"
+  },
+  {
+   "md": "### Monitoring",
+   "id": "monitoring"
+  },
+  {
+   "md": "## Alternatives",
+   "id": "alternatives"
+  }
+ ],
+ "2014-04-07-service-ioc-containers": [
+  {
+   "md": "## Discovery",
+   "id": "discovery"
+  },
+  {
+   "md": "### Discovery by convention",
+   "id": "discovery-by-convention"
+  },
+  {
+   "md": "#### UDP multi-cast/broadcast",
+   "id": "udp-multi-castbroadcast"
+  },
+  {
+   "md": "#### DNS multi-cast",
+   "id": "dns-multi-cast"
+  },
+  {
+   "md": "### Using the container",
+   "id": "using-the-container"
+  },
+  {
+   "md": "#### Service registration",
+   "id": "service-registration"
+  },
+  {
+   "md": "## Auto-scaling and resilience",
+   "id": "auto-scaling-and-resilience"
+  }
+ ],
+ "2017-05-20-templated-styles": [
+  {
+   "md": "# Conditional View approach",
+   "id": "conditional-view-approach"
+  },
+  {
+   "md": "# Templated Styles approach",
+   "id": "templated-styles-approach"
+  }
+ ],
+ "2017-05-26-testing-logging": [
+  {
+   "md": "# Logging is complex",
+   "id": "logging-is-complex"
+  },
+  {
+   "md": "# Testing Cross cutting requirements",
+   "id": "testing-cross-cutting-requirements"
+  },
+  {
+   "md": "# Testing Specifics",
+   "id": "testing-specifics"
+  },
+  {
+   "md": "# Wrapping Up",
+   "id": "wrapping-up"
+  }
+ ],
+ "2017-06-06-defending-the-domain-model": [
+  {
+   "md": "# Identities",
+   "id": "identities"
+  },
+  {
+   "md": "# Data Conversion",
+   "id": "data-conversion"
+  },
+  {
+   "md": "# Data Mapping",
+   "id": "data-mapping"
+  },
+  {
+   "md": "# Wrapping up",
+   "id": "wrapping-up"
+  }
+ ],
+ "2017-06-15-commit-history-metrics": [
+  {
+   "md": "# Setting up the Git Kuona Collectors",
+   "id": "setting-up-the-git-kuona-collectors"
+  }
+ ],
+ "2017-07-07-path-to-a-million": [
+  {
+   "md": "# Next steps",
+   "id": "next-steps"
+  }
+ ],
+ "2018-02-17-quantifying-commit-risk": [
+  {
+   "md": "# Are we there yet?",
+   "id": "are-we-there-yet"
+  },
+  {
+   "md": "# Yesterday’s weather",
+   "id": "yesterdays-weather"
+  },
+  {
+   "md": "# Implementing a risk assessment",
+   "id": "implementing-a-risk-assessment"
+  },
+  {
+   "md": "## Reverse tracing changes",
+   "id": "reverse-tracing-changes"
+  }
+ ],
+ "2018-04-29-orchestration-and-choreography": [
+  {
+   "md": "# Change",
+   "id": "change"
+  },
+  {
+   "md": "# Wrap-up",
+   "id": "wrap-up"
+  }
+ ],
+ "2018-12-09-of-languages-and-containers": [
+  {
+   "md": "# Developer Workflow",
+   "id": "developer-workflow"
+  },
+  {
+   "md": "# Dilemma",
+   "id": "dilemma"
+  }
+ ],
+ "2018-12-27-technical-health-over-technical-debt": [
+  {
+   "md": "# Technical Health",
+   "id": "technical-health"
+  }
+ ],
+ "2020-04-05-go-bazel-container": [
+  {
+   "md": "# The API",
+   "id": "the-api"
+  },
+  {
+   "md": "# Bazel",
+   "id": "bazel"
+  },
+  {
+   "md": "# Building a container in a container",
+   "id": "building-a-container-in-a-container"
+  },
+  {
+   "md": "# Wrapping up",
+   "id": "wrapping-up"
+  }
+ ],
+ "2021-09-11-kilpse-bloging": [
+  {
+   "md": "# A more elaborate example",
+   "id": "a-more-elaborate-example"
+  }
+ ],
+ "2022-11-25-iteration-zero": [
+  {
+   "md": "# What is Iteration Zero?",
+   "id": "what-is-iteration-zero"
+  },
+  {
+   "md": "# Why spend time at the start of a project?",
+   "id": "why-spend-time-at-the-start-of-a-project"
+  },
+  {
+   "md": "## The last mile problem",
+   "id": "the-last-mile-problem"
+  },
+  {
+   "md": "# How to make Iteration Zero work?",
+   "id": "how-to-make-iteration-zero-work"
+  },
+  {
+   "md": "# Wrapping up",
+   "id": "wrapping-up"
+  }
+ ],
+ "2023-07-03-interesting-times-gen-ai": [
+  {
+   "md": "# Understanding Generative AI’s Disruption",
+   "id": "understanding-generative-ais-disruption"
+  },
+  {
+   "md": "# The Challenge and the Excitement",
+   "id": "the-challenge-and-the-excitement"
+  },
+  {
+   "md": "# The Future with Generative AI",
+   "id": "the-future-with-generative-ai"
+  },
+  {
+   "md": "# About the Author",
+   "id": "about-the-author"
+  }
+ ],
+ "2023-07-05-pair-mob-programming-ai-co-pilots": [
+  {
+   "md": "# Pair Programming",
+   "id": "pair-programming"
+  },
+  {
+   "md": "# Mob Programming",
+   "id": "mob-programming"
+  },
+  {
+   "md": "# AI Co-Pilots",
+   "id": "ai-co-pilots"
+  },
+  {
+   "md": "# Remote Work and AI Co-Pilots: Advantages in the New Normal",
+   "id": "remote-work-and-ai-co-pilots-advantages-in-the-new-normal"
+  },
+  {
+   "md": "# Conclusion",
+   "id": "conclusion"
+  }
+ ],
+ "ai-coding-isolation": [
+  {
+   "md": "## The Problem: Power vs. Safety",
+   "id": "the-problem-power-vs-safety"
+  },
+  {
+   "md": "## The Risks",
+   "id": "the-risks"
+  },
+  {
+   "md": "## Attack Vectors",
+   "id": "attack-vectors"
+  },
+  {
+   "md": "## Remote vs. Local Isolation",
+   "id": "remote-vs-local-isolation"
+  },
+  {
+   "md": "## DevContainers as a Foundation",
+   "id": "devcontainers-as-a-foundation"
+  },
+  {
+   "md": "## Building devc",
+   "id": "building-devc"
+  },
+  {
+   "md": "### Security Profiles",
+   "id": "security-profiles"
+  },
+  {
+   "md": "## What's Next",
+   "id": "whats-next"
+  }
+ ],
+ "automating-github-account-management": [
+  {
+   "md": "## The shape",
+   "id": "the-shape"
+  },
+  {
+   "md": "## Two tiers, and a hard line between them",
+   "id": "two-tiers-and-a-hard-line-between-them"
+  },
+  {
+   "md": "### The model reads untrusted input",
+   "id": "the-model-reads-untrusted-input"
+  },
+  {
+   "md": "## The identity is the interesting part",
+   "id": "the-identity-is-the-interesting-part"
+  },
+  {
+   "md": "## Policy as a single file",
+   "id": "policy-as-a-single-file"
+  },
+  {
+   "md": "## Dependency lifecycle: two bots, one job each",
+   "id": "dependency-lifecycle-two-bots-one-job-each"
+  },
+  {
+   "md": "### Actions and runtimes are dependencies too",
+   "id": "actions-and-runtimes-are-dependencies-too"
+  },
+  {
+   "md": "## Fail-safe is a design stance, not a code review comment",
+   "id": "fail-safe-is-a-design-stance-not-a-code-review-comment"
+  },
+  {
+   "md": "## Releases without release engineering",
+   "id": "releases-without-release-engineering"
+  },
+  {
+   "md": "## Observability, or: how do I know it's working?",
+   "id": "observability-or-how-do-i-know-its-working"
+  },
+  {
+   "md": "## What I'd do differently, and what I'd keep",
+   "id": "what-id-do-differently-and-what-id-keep"
+  },
+  {
+   "md": "## Further reading",
+   "id": "further-reading"
+  }
+ ],
+ "backstage-catalog-graph-first-release": [
+  {
+   "md": "## Reading a bigger catalog",
+   "id": "reading-a-bigger-catalog"
+  },
+  {
+   "md": "## Moving between the graph and the YAML",
+   "id": "moving-between-the-graph-and-the-yaml"
+  },
+  {
+   "md": "## Catching up with Backstage",
+   "id": "catching-up-with-backstage"
+  },
+  {
+   "md": "## Faster, and fewer wrong answers",
+   "id": "faster-and-fewer-wrong-answers"
+  },
+  {
+   "md": "## Two implementations, one contract",
+   "id": "two-implementations-one-contract"
+  },
+  {
+   "md": "## Install or upgrade",
+   "id": "install-or-upgrade"
+  }
+ ],
+ "brake-exit-criteria-for-the-consumer": [
+  {
+   "md": "## Every exit criterion an agent has is about your repository",
+   "id": "every-exit-criterion-an-agent-has-is-about-your-repository"
+  },
+  {
+   "md": "## The first move: the contract is the consumer's stand-in",
+   "id": "the-first-move-the-contract-is-the-consumers-stand-in"
+  },
+  {
+   "md": "## A break is a positive fact about a diff",
+   "id": "a-break-is-a-positive-fact-about-a-diff"
+  },
+  {
+   "md": "## The second move: the consumer's demands are a file, and brake already reads files",
+   "id": "the-second-move-the-consumers-demands-are-a-file-and-brake-already-reads-files"
+  },
+  {
+   "md": "### Three formats, and they are not equally trustworthy",
+   "id": "three-formats-and-they-are-not-equally-trustworthy"
+  },
+  {
+   "md": "### Binding, and refusing to guess",
+   "id": "binding-and-refusing-to-guess"
+  },
+  {
+   "md": "### Verification is the existing comparator, run sideways",
+   "id": "verification-is-the-existing-comparator-run-sideways"
+  },
+  {
+   "md": "### Attribution is evidence, not a finding",
+   "id": "attribution-is-evidence-not-a-finding"
+  },
+  {
+   "md": "### Where the files come from, with no network",
+   "id": "where-the-files-come-from-with-no-network"
+  },
+  {
+   "md": "## Asking before the edit, not after",
+   "id": "asking-before-the-edit-not-after"
+  },
+  {
+   "md": "## Two questions, and an agent only ever asks one of them",
+   "id": "two-questions-and-an-agent-only-ever-asks-one-of-them"
+  },
+  {
+   "md": "## Silence is not a pass, and this is where agents differ from people",
+   "id": "silence-is-not-a-pass-and-this-is-where-agents-differ-from-people"
+  },
+  {
+   "md": "### The policy that could lie, and the four constraints on it",
+   "id": "the-policy-that-could-lie-and-the-four-constraints-on-it"
+  },
+  {
+   "md": "## Being blocked is not the useful part",
+   "id": "being-blocked-is-not-the-useful-part"
+  },
+  {
+   "md": "## The same gate, one step earlier",
+   "id": "the-same-gate-one-step-earlier"
+  },
+  {
+   "md": "### Four skills, which are mostly warnings",
+   "id": "four-skills-which-are-mostly-warnings"
+  },
+  {
+   "md": "### One exclusion worth stating out loud",
+   "id": "one-exclusion-worth-stating-out-loud"
+  },
+  {
+   "md": "## What it can't do",
+   "id": "what-it-cant-do"
+  },
+  {
+   "md": "## Taking its own medicine",
+   "id": "taking-its-own-medicine"
+  },
+  {
+   "md": "## Where this goes",
+   "id": "where-this-goes"
+  }
+ ],
+ "building-a-code-knowledge-graph-for-ai-agents": [
+  {
+   "md": "# Building a Code Knowledge Graph for AI Agents",
+   "id": "building-a-code-knowledge-graph-for-ai-agents"
+  },
+  {
+   "md": "## How I rebuilt codegraph in Rust to give AI coding assistants a semantic map of your codebase",
+   "id": "how-i-rebuilt-codegraph-in-rust-to-give-ai-coding-assistants-a-semantic-map-of-your-codebase"
+  },
+  {
+   "md": "## The Origin Story: codegraph",
+   "id": "the-origin-story-codegraph"
+  },
+  {
+   "md": "## What codemap Actually Does",
+   "id": "what-codemap-actually-does"
+  },
+  {
+   "md": "## The MCP Interface: 17 Tools for Code Intelligence",
+   "id": "the-mcp-interface-17-tools-for-code-intelligence"
+  },
+  {
+   "md": "## Why This Matters for Agentic Coding",
+   "id": "why-this-matters-for-agentic-coding"
+  },
+  {
+   "md": "### Impact Analysis: The Killer Feature",
+   "id": "impact-analysis-the-killer-feature"
+  },
+  {
+   "md": "### Dead Code Detection",
+   "id": "dead-code-detection"
+  },
+  {
+   "md": "### Call Path Discovery",
+   "id": "call-path-discovery"
+  },
+  {
+   "md": "## The Compiled Binary Advantage",
+   "id": "the-compiled-binary-advantage"
+  },
+  {
+   "md": "## Technical Architecture",
+   "id": "technical-architecture"
+  },
+  {
+   "md": "## Getting Started",
+   "id": "getting-started"
+  },
+  {
+   "md": "## What's Next",
+   "id": "whats-next"
+  }
+ ],
+ "building-your-own-tools": [
+  {
+   "md": "## The threshold that moved",
+   "id": "the-threshold-that-moved"
+  },
+  {
+   "md": "## The example",
+   "id": "the-example"
+  },
+  {
+   "md": "## What it replaces is seven tools",
+   "id": "what-it-replaces-is-seven-tools"
+  },
+  {
+   "md": "## Configuration is a hedge against a user you haven't met",
+   "id": "configuration-is-a-hedge-against-a-user-you-havent-met"
+  },
+  {
+   "md": "## What actually survived: eight settings, not zero",
+   "id": "what-actually-survived-eight-settings-not-zero"
+  },
+  {
+   "md": "## What the agent did, and what it didn't",
+   "id": "what-the-agent-did-and-what-it-didnt"
+  },
+  {
+   "md": "## What this doesn't change",
+   "id": "what-this-doesnt-change"
+  },
+  {
+   "md": "## The actual permission",
+   "id": "the-actual-permission"
+  }
+ ],
+ "bx-lighter-mcp-servers": [
+  {
+   "md": "## The npx tax on MCP",
+   "id": "the-npx-tax-on-mcp"
+  },
+  {
+   "md": "## The nvm wrinkle",
+   "id": "the-nvm-wrinkle"
+  },
+  {
+   "md": "## And then there is the npm supply chain",
+   "id": "and-then-there-is-the-npm-supply-chain"
+  },
+  {
+   "md": "## What bx actually does",
+   "id": "what-bx-actually-does"
+  },
+  {
+   "md": "## The footprint difference",
+   "id": "the-footprint-difference"
+  },
+  {
+   "md": "## Beyond MCP",
+   "id": "beyond-mcp"
+  },
+  {
+   "md": "## What's next",
+   "id": "whats-next"
+  },
+  {
+   "md": "## Try it",
+   "id": "try-it"
+  }
+ ],
+ "cadence-is-a-budget-line": [
+  {
+   "md": "## The bill, split by who caused it",
+   "id": "the-bill-split-by-who-caused-it"
+  },
+  {
+   "md": "## The sweep that mostly found nothing",
+   "id": "the-sweep-that-mostly-found-nothing"
+  },
+  {
+   "md": "## A scheduler's cost is mostly downstream",
+   "id": "a-schedulers-cost-is-mostly-downstream"
+  },
+  {
+   "md": "## The sweep was supposed to be a backstop",
+   "id": "the-sweep-was-supposed-to-be-a-backstop"
+  },
+  {
+   "md": "## What changed",
+   "id": "what-changed"
+  },
+  {
+   "md": "## Cost per wake-up as the unit of design",
+   "id": "cost-per-wake-up-as-the-unit-of-design"
+  },
+  {
+   "md": "## Why this matters more with agents in the loop",
+   "id": "why-this-matters-more-with-agents-in-the-loop"
+  },
+  {
+   "md": "## What I haven't measured, and what's still open",
+   "id": "what-i-havent-measured-and-whats-still-open"
+  }
+ ],
+ "casual-review-cli-team-code-review": [
+  {
+   "md": "## The Shape of the Tool",
+   "id": "the-shape-of-the-tool"
+  },
+  {
+   "md": "## Diff-Aware by Default",
+   "id": "diff-aware-by-default"
+  },
+  {
+   "md": "## Git Notes as the Substrate",
+   "id": "git-notes-as-the-substrate"
+  },
+  {
+   "md": "## The Team Angle",
+   "id": "the-team-angle"
+  },
+  {
+   "md": "## The Rule Set",
+   "id": "the-rule-set"
+  },
+  {
+   "md": "## IDE Extensions: VS Code, JetBrains, Zed",
+   "id": "ide-extensions-vs-code-jetbrains-zed"
+  },
+  {
+   "md": "## Speed Is a Feature, Not a Vanity Metric",
+   "id": "speed-is-a-feature-not-a-vanity-metric"
+  },
+  {
+   "md": "## Built for Agents Too",
+   "id": "built-for-agents-too"
+  },
+  {
+   "md": "## What It Is Not",
+   "id": "what-it-is-not"
+  },
+  {
+   "md": "## Status",
+   "id": "status"
+  },
+  {
+   "md": "## Why This, Now",
+   "id": "why-this-now"
+  }
+ ],
+ "code-knowledge-graph-for-review": [
+  {
+   "md": "## The Generation Bias",
+   "id": "the-generation-bias"
+  },
+  {
+   "md": "## What Review Actually Needs",
+   "id": "what-review-actually-needs"
+  },
+  {
+   "md": "## The Graph Already Knows",
+   "id": "the-graph-already-knows"
+  },
+  {
+   "md": "## Five Queries the Graph Can Answer Today",
+   "id": "five-queries-the-graph-can-answer-today"
+  },
+  {
+   "md": "## Why Agents Are Bad at This Without the Graph",
+   "id": "why-agents-are-bad-at-this-without-the-graph"
+  },
+  {
+   "md": "## Where This Lands in the Workflow",
+   "id": "where-this-lands-in-the-workflow"
+  },
+  {
+   "md": "## What's Next",
+   "id": "whats-next"
+  }
+ ],
+ "code-review-after-the-pull-request": [
+  {
+   "md": "## What the Pull Request Quietly Assumed",
+   "id": "what-the-pull-request-quietly-assumed"
+  },
+  {
+   "md": "## What Agent-Generated Code Breaks",
+   "id": "what-agent-generated-code-breaks"
+  },
+  {
+   "md": "## Three Candidate Models for the New State of the Art",
+   "id": "three-candidate-models-for-the-new-state-of-the-art"
+  },
+  {
+   "md": "### 1. Pre-PR Review — pair programming, reinvented",
+   "id": "1-pre-pr-review--pair-programming-reinvented"
+  },
+  {
+   "md": "### 2. Continuous State Review — the graph, always running",
+   "id": "2-continuous-state-review--the-graph-always-running"
+  },
+  {
+   "md": "### 3. Spec-as-Review-Unit — review the contract, not the code",
+   "id": "3-spec-as-review-unit--review-the-contract-not-the-code"
+  },
+  {
+   "md": "### The three at a glance",
+   "id": "the-three-at-a-glance"
+  },
+  {
+   "md": "## The Hybrid We're Probably Heading Toward",
+   "id": "the-hybrid-were-probably-heading-toward"
+  },
+  {
+   "md": "## What This Means for Tools",
+   "id": "what-this-means-for-tools"
+  },
+  {
+   "md": "## Closing",
+   "id": "closing"
+  },
+  {
+   "md": "### Where this is heading",
+   "id": "where-this-is-heading"
+  }
+ ],
+ "diagram-scene-first-release": [
+  {
+   "md": "## What's in the first release",
+   "id": "whats-in-the-first-release"
+  },
+  {
+   "md": "## Seeing it",
+   "id": "seeing-it"
+  },
+  {
+   "md": "## Installing and upgrading",
+   "id": "installing-and-upgrading"
+  },
+  {
+   "md": "## What to make of it",
+   "id": "what-to-make-of-it"
+  }
+ ],
+ "exploring-your-backstage-catalog-without-backstage": [
+  {
+   "md": "# Exploring Your Backstage Catalog Without Backstage",
+   "id": "exploring-your-backstage-catalog-without-backstage"
+  },
+  {
+   "md": "## How bsv gives you instant visibility into your software catalog from the terminal",
+   "id": "how-bsv-gives-you-instant-visibility-into-your-software-catalog-from-the-terminal"
+  },
+  {
+   "md": "## The Catalog Visibility Gap",
+   "id": "the-catalog-visibility-gap"
+  },
+  {
+   "md": "## bsv: A Terminal Window Into Your Catalog",
+   "id": "bsv-a-terminal-window-into-your-catalog"
+  },
+  {
+   "md": "### Validation Without Deployment",
+   "id": "validation-without-deployment"
+  },
+  {
+   "md": "### Reference Checking",
+   "id": "reference-checking"
+  },
+  {
+   "md": "### Relationship Graphs",
+   "id": "relationship-graphs"
+  },
+  {
+   "md": "### Documentation Browser",
+   "id": "documentation-browser"
+  },
+  {
+   "md": "## Why the Terminal?",
+   "id": "why-the-terminal"
+  },
+  {
+   "md": "## What It Looks Like in Practice",
+   "id": "what-it-looks-like-in-practice"
+  },
+  {
+   "md": "## Under the Hood",
+   "id": "under-the-hood"
+  }
+ ],
+ "facts-rust-testing-library": [
+  {
+   "md": "## The reading order problem",
+   "id": "the-reading-order-problem"
+  },
+  {
+   "md": "## What Midje gets right",
+   "id": "what-midje-gets-right"
+  },
+  {
+   "md": "## What `facts` does",
+   "id": "what-facts-does"
+  },
+  {
+   "md": "## The `Checker` blanket impl",
+   "id": "the-checker-blanket-impl"
+  },
+  {
+   "md": "## Tradeoffs the port had to make",
+   "id": "tradeoffs-the-port-had-to-make"
+  },
+  {
+   "md": "## Mocks without `with-redefs`",
+   "id": "mocks-without-with-redefs"
+  },
+  {
+   "md": "## What this is not",
+   "id": "what-this-is-not"
+  }
+ ],
+ "forge-2026-10-2-library": [
+  {
+   "md": "## forge as a library",
+   "id": "forge-as-a-library"
+  },
+  {
+   "md": "## Upkeep",
+   "id": "upkeep"
+  },
+  {
+   "md": "## Install or upgrade",
+   "id": "install-or-upgrade"
+  }
+ ],
+ "forge-2026-9-8-jetbrains-preview": [
+  {
+   "md": "## A live preview inside JetBrains IDEs",
+   "id": "a-live-preview-inside-jetbrains-ides"
+  },
+  {
+   "md": "## Models on stdin",
+   "id": "models-on-stdin"
+  },
+  {
+   "md": "## Housekeeping",
+   "id": "housekeeping"
+  },
+  {
+   "md": "## What isn't in this release",
+   "id": "what-isnt-in-this-release"
+  },
+  {
+   "md": "## Install or upgrade",
+   "id": "install-or-upgrade"
+  }
+ ],
+ "increment-aligned-diffs-in-the-terminal": [
+  {
+   "md": "## What it looks like",
+   "id": "what-it-looks-like"
+  },
+  {
+   "md": "## The ways in",
+   "id": "the-ways-in"
+  },
+  {
+   "md": "## Branch review",
+   "id": "branch-review"
+  },
+  {
+   "md": "## Settings you change while reading",
+   "id": "settings-you-change-while-reading"
+  },
+  {
+   "md": "## Moves shown as moves",
+   "id": "moves-shown-as-moves"
+  },
+  {
+   "md": "## As a git difftool or pager",
+   "id": "as-a-git-difftool-or-pager"
+  },
+  {
+   "md": "## Why another diff tool",
+   "id": "why-another-diff-tool"
+  },
+  {
+   "md": "## Install",
+   "id": "install"
+  }
+ ],
+ "infographic-first-release": [
+  {
+   "md": "## What you can do with it",
+   "id": "what-you-can-do-with-it"
+  },
+  {
+   "md": "## What the benchmark rounds changed",
+   "id": "what-the-benchmark-rounds-changed"
+  },
+  {
+   "md": "## Pinning a node's column",
+   "id": "pinning-a-nodes-column"
+  },
+  {
+   "md": "## Dependencies and packaging",
+   "id": "dependencies-and-packaging"
+  },
+  {
+   "md": "## Install",
+   "id": "install"
+  }
+ ],
+ "inner-loop-agentic-development": [
+  {
+   "md": "## Architecture",
+   "id": "architecture"
+  },
+  {
+   "md": "## What changes when the agent is doing the iteration",
+   "id": "what-changes-when-the-agent-is-doing-the-iteration"
+  },
+  {
+   "md": "## The substrate: AST MCP servers and code intelligence",
+   "id": "the-substrate-ast-mcp-servers-and-code-intelligence"
+  },
+  {
+   "md": "## Sensors: making feedback actionable for agents",
+   "id": "sensors-making-feedback-actionable-for-agents"
+  },
+  {
+   "md": "### Computational sensors",
+   "id": "computational-sensors"
+  },
+  {
+   "md": "### Inferential sensors",
+   "id": "inferential-sensors"
+  },
+  {
+   "md": "### Cadence: when each sensor fires",
+   "id": "cadence-when-each-sensor-fires"
+  },
+  {
+   "md": "## Codemods: the apply side",
+   "id": "codemods-the-apply-side"
+  },
+  {
+   "md": "## The integrated picture",
+   "id": "the-integrated-picture"
+  },
+  {
+   "md": "## Skills: the package format",
+   "id": "skills-the-package-format"
+  },
+  {
+   "md": "## Why skills fragment",
+   "id": "why-skills-fragment"
+  },
+  {
+   "md": "## Plugins and marketplaces: the missing tooling",
+   "id": "plugins-and-marketplaces-the-missing-tooling"
+  },
+  {
+   "md": "## The MCP-server delivery gap",
+   "id": "the-mcp-server-delivery-gap"
+  },
+  {
+   "md": "## Putting it all together: an inner-loop walkthrough",
+   "id": "putting-it-all-together-an-inner-loop-walkthrough"
+  },
+  {
+   "md": "## Practical recommendations",
+   "id": "practical-recommendations"
+  },
+  {
+   "md": "## Further reading",
+   "id": "further-reading"
+  }
+ ],
+ "letting-an-agent-read-your-mail": [
+  {
+   "md": "## The wrong question",
+   "id": "the-wrong-question"
+  },
+  {
+   "md": "## Three processes, and what each one can't do",
+   "id": "three-processes-and-what-each-one-cant-do"
+  },
+  {
+   "md": "## Taking the network away, in the OS",
+   "id": "taking-the-network-away-in-the-os"
+  },
+  {
+   "md": "## Why it has to be its own launchd agent",
+   "id": "why-it-has-to-be-its-own-launchd-agent"
+  },
+  {
+   "md": "## A request protocol with no network in it",
+   "id": "a-request-protocol-with-no-network-in-it"
+  },
+  {
+   "md": "## Scope is an allowlist, and empty means nothing",
+   "id": "scope-is-an-allowlist-and-empty-means-nothing"
+  },
+  {
+   "md": "## Filtering before the model sees anything",
+   "id": "filtering-before-the-model-sees-anything"
+  },
+  {
+   "md": "## What still gets through",
+   "id": "what-still-gets-through"
+  },
+  {
+   "md": "## The rest of the twin makes the same move",
+   "id": "the-rest-of-the-twin-makes-the-same-move"
+  },
+  {
+   "md": "## What I'd take from it",
+   "id": "what-id-take-from-it"
+  }
+ ],
+ "mmd-mermaid-to-svg-without-a-browser": [
+  {
+   "md": "## The problem: labels that live in HTML",
+   "id": "the-problem-labels-that-live-in-html"
+  },
+  {
+   "md": "## Using it",
+   "id": "using-it"
+  },
+  {
+   "md": "## What it renders",
+   "id": "what-it-renders"
+  },
+  {
+   "md": "## Measured text, not estimated text",
+   "id": "measured-text-not-estimated-text"
+  },
+  {
+   "md": "## Why it's small",
+   "id": "why-its-small"
+  },
+  {
+   "md": "## How it's tested",
+   "id": "how-its-tested"
+  },
+  {
+   "md": "## Install",
+   "id": "install"
+  }
+ ],
+ "open-source-update-october-2026": [
+  {
+   "md": "## Where the 92 releases came from",
+   "id": "where-the-92-releases-came-from"
+  },
+  {
+   "md": "## New tools",
+   "id": "new-tools"
+  },
+  {
+   "md": "## Releases that changed behaviour",
+   "id": "releases-that-changed-behaviour"
+  },
+  {
+   "md": "## On main, not yet released",
+   "id": "on-main-not-yet-released"
+  },
+  {
+   "md": "## Smaller things",
+   "id": "smaller-things"
+  }
+ ],
+ "puml-2026-10-2-scenes": [
+  {
+   "md": "## Diagrams as scenes",
+   "id": "diagrams-as-scenes"
+  },
+  {
+   "md": "## Lost messages parse",
+   "id": "lost-messages-parse"
+  },
+  {
+   "md": "## Dependency updates",
+   "id": "dependency-updates"
+  },
+  {
+   "md": "## Install",
+   "id": "install"
+  }
+ ],
+ "release-pipeline-as-a-tool": [
+  {
+   "md": "## What a release has to produce",
+   "id": "what-a-release-has-to-produce"
+  },
+  {
+   "md": "## The tag is the version",
+   "id": "the-tag-is-the-version"
+  },
+  {
+   "md": "## One workflow, one script, one file of differences",
+   "id": "one-workflow-one-script-one-file-of-differences"
+  },
+  {
+   "md": "## The pipeline, in order",
+   "id": "the-pipeline-in-order"
+  },
+  {
+   "md": "## The two fixes",
+   "id": "the-two-fixes"
+  },
+  {
+   "md": "## Adoption is a script, and a fix is a copy",
+   "id": "adoption-is-a-script-and-a-fix-is-a-copy"
+  },
+  {
+   "md": "## The release process has a user",
+   "id": "the-release-process-has-a-user"
+  }
+ ],
+ "rust-native-architecture-toolchain": [
+  {
+   "md": "# A Rust-Native Architecture Toolchain: forge, puml, and adoc",
+   "id": "a-rust-native-architecture-toolchain-forge-puml-and-adoc"
+  },
+  {
+   "md": "## Replacing the JVM and Ruby pieces of the architecture documentation stack with single static binaries",
+   "id": "replacing-the-jvm-and-ruby-pieces-of-the-architecture-documentation-stack-with-single-static-binaries"
+  },
+  {
+   "md": "## forge: One DSL, Many Views",
+   "id": "forge-one-dsl-many-views"
+  },
+  {
+   "md": "## puml: PlantUML Without the JAR",
+   "id": "puml-plantuml-without-the-jar"
+  },
+  {
+   "md": "## adoc: AsciiDoc, Spec-First",
+   "id": "adoc-asciidoc-spec-first"
+  },
+  {
+   "md": "## Where the Three Pieces Meet",
+   "id": "where-the-three-pieces-meet"
+  },
+  {
+   "md": "## Why Single Static Binaries Matter Now",
+   "id": "why-single-static-binaries-matter-now"
+  },
+  {
+   "md": "## What's Next",
+   "id": "whats-next"
+  }
+ ],
+ "seeing-your-codebase-as-a-city": [
+  {
+   "md": "# Seeing Your Codebase as a City",
+   "id": "seeing-your-codebase-as-a-city"
+  },
+  {
+   "md": "## Why we need better ways to understand code at scale -- and how 3D visualization can help",
+   "id": "why-we-need-better-ways-to-understand-code-at-scale--and-how-3d-visualization-can-help"
+  },
+  {
+   "md": "## The Problem: Code is Invisible",
+   "id": "the-problem-code-is-invisible"
+  },
+  {
+   "md": "## The Metaphor: Code as Architecture",
+   "id": "the-metaphor-code-as-architecture"
+  },
+  {
+   "md": "## Two Ways to See",
+   "id": "two-ways-to-see"
+  },
+  {
+   "md": "## How It Works",
+   "id": "how-it-works"
+  },
+  {
+   "md": "## What You Actually See",
+   "id": "what-you-actually-see"
+  },
+  {
+   "md": "## Why Visualization Matters",
+   "id": "why-visualization-matters"
+  },
+  {
+   "md": "## Getting Started",
+   "id": "getting-started"
+  }
+ ],
+ "stop-declaring-what-you-can-read": [
+  {
+   "md": "## The flag that went stale",
+   "id": "the-flag-that-went-stale"
+  },
+  {
+   "md": "## Reading the mode instead",
+   "id": "reading-the-mode-instead"
+  },
+  {
+   "md": "## Splitting what the flag was doing",
+   "id": "splitting-what-the-flag-was-doing"
+  },
+  {
+   "md": "## Second copies everywhere",
+   "id": "second-copies-everywhere"
+  },
+  {
+   "md": "## Gates that fail rather than pass",
+   "id": "gates-that-fail-rather-than-pass"
+  },
+  {
+   "md": "## What I'd take from it",
+   "id": "what-id-take-from-it"
+  }
+ ],
+ "symgraph-2026-10-18-export": [
+  {
+   "md": "## Generated and minified code leaves the graph",
+   "id": "generated-and-minified-code-leaves-the-graph"
+  },
+  {
+   "md": "## `symgraph export`: the graph as JSON Lines",
+   "id": "symgraph-export-the-graph-as-json-lines"
+  },
+  {
+   "md": "## Everything else",
+   "id": "everything-else"
+  },
+  {
+   "md": "## Install or upgrade",
+   "id": "install-or-upgrade"
+  }
+ ],
+ "symgraph-admitting-what-it-does-not-know": [
+  {
+   "md": "## Sixteen percent of the call graph was fiction",
+   "id": "sixteen-percent-of-the-call-graph-was-fiction"
+  },
+  {
+   "md": "## The tool that had never worked",
+   "id": "the-tool-that-had-never-worked"
+  },
+  {
+   "md": "## Counting the tests as architecture",
+   "id": "counting-the-tests-as-architecture"
+  },
+  {
+   "md": "## \"count\" meant two things",
+   "id": "count-meant-two-things"
+  },
+  {
+   "md": "## What honest failure looks like",
+   "id": "what-honest-failure-looks-like"
+  },
+  {
+   "md": "## The part that still doesn't work",
+   "id": "the-part-that-still-doesnt-work"
+  },
+  {
+   "md": "## Everything else",
+   "id": "everything-else"
+  },
+  {
+   "md": "## The lesson I'd generalise",
+   "id": "the-lesson-id-generalise"
+  }
+ ],
+ "teleplot-first-release": [
+  {
+   "md": "## What you can point it at",
+   "id": "what-you-can-point-it-at"
+  },
+  {
+   "md": "## What the charts can do",
+   "id": "what-the-charts-can-do"
+  },
+  {
+   "md": "## Dashboards over data that isn't in Elasticsearch",
+   "id": "dashboards-over-data-that-isnt-in-elasticsearch"
+  },
+  {
+   "md": "## For agents",
+   "id": "for-agents"
+  },
+  {
+   "md": "## The unglamorous part",
+   "id": "the-unglamorous-part"
+  },
+  {
+   "md": "## Install",
+   "id": "install"
+  }
+ ],
+ "tropism-architecture-in-the-agentic-loop": [
+  {
+   "md": "## The signals an agent already has",
+   "id": "the-signals-an-agent-already-has"
+  },
+  {
+   "md": "## Spec-driven development stops at the spec",
+   "id": "spec-driven-development-stops-at-the-spec"
+  },
+  {
+   "md": "## What tropism is",
+   "id": "what-tropism-is"
+  },
+  {
+   "md": "## The one constraint everything follows from",
+   "id": "the-one-constraint-everything-follows-from"
+  },
+  {
+   "md": "## Presence versus absence, which is the whole soundness story",
+   "id": "presence-versus-absence-which-is-the-whole-soundness-story"
+  },
+  {
+   "md": "## The unique bit: architecture as a checked artifact at the repo root",
+   "id": "the-unique-bit-architecture-as-a-checked-artifact-at-the-repo-root"
+  },
+  {
+   "md": "## Scoped checks are a ratchet with no baseline file",
+   "id": "scoped-checks-are-a-ratchet-with-no-baseline-file"
+  },
+  {
+   "md": "## Teaching the agent when not to trust the tool",
+   "id": "teaching-the-agent-when-not-to-trust-the-tool"
+  },
+  {
+   "md": "## What it can't do",
+   "id": "what-it-cant-do"
+  },
+  {
+   "md": "## Where this goes",
+   "id": "where-this-goes"
+  }
+ ],
+ "vibe-coding": [
+  {
+   "md": "## The Essence of Vibe Coding",
+   "id": "the-essence-of-vibe-coding"
+  },
+  {
+   "md": "## GenAI Tool evolution",
+   "id": "genai-tool-evolution"
+  },
+  {
+   "md": "### Inline Completion and Ask",
+   "id": "inline-completion-and-ask"
+  },
+  {
+   "md": "### Agents within the IDE",
+   "id": "agents-within-the-ide"
+  },
+  {
+   "md": "### Command Line Tools",
+   "id": "command-line-tools"
+  },
+  {
+   "md": "## Vibe Coding C4 Diagram",
+   "id": "vibe-coding-c4-diagram"
+  }
+ ],
+ "visualizing-project-structure-with-rv": [
+  {
+   "md": "# Visualizing Project Structure with rv",
+   "id": "visualizing-project-structure-with-rv"
+  },
+  {
+   "md": "## A fast, interactive way to see what's actually in your project",
+   "id": "a-fast-interactive-way-to-see-whats-actually-in-your-project"
+  },
+  {
+   "md": "## What You See",
+   "id": "what-you-see"
+  },
+  {
+   "md": "## Interactive, Not Static",
+   "id": "interactive-not-static"
+  },
+  {
+   "md": "## Practical Use",
+   "id": "practical-use"
+  },
+  {
+   "md": "## Sensible Defaults",
+   "id": "sensible-defaults"
+  },
+  {
+   "md": "## Why a Graph?",
+   "id": "why-a-graph"
+  },
+  {
+   "md": "## Getting Started",
+   "id": "getting-started"
+  }
+ ],
+ "what-is-an-mcp-server-for": [
+  {
+   "md": "## The gate",
+   "id": "the-gate"
+  },
+  {
+   "md": "## What a file can't tell an agent",
+   "id": "what-a-file-cant-tell-an-agent"
+  },
+  {
+   "md": "## A save with rules",
+   "id": "a-save-with-rules"
+  },
+  {
+   "md": "## What real agents found that the tests didn't",
+   "id": "what-real-agents-found-that-the-tests-didnt"
+  },
+  {
+   "md": "## The gate, passed more narrowly than I thought",
+   "id": "the-gate-passed-more-narrowly-than-i-thought"
+  },
+  {
+   "md": "## Most MCP servers should fail this gate",
+   "id": "most-mcp-servers-should-fail-this-gate"
+  }
+ ]
+}

@@ -1,6 +1,17 @@
 # ferrisite design
 
-Status: **M0, 2026-10-31.** Open questions O1–O3, O5 and O6 decided (section 14); O4 still open. Nothing beyond a CLI shell is implemented.
+Status: **M1 done, 2026-10-31.** `ferrisite build` renders grahambrooks.com's posts,
+plain pages and paginated section lists with built-in templates. Open question O4
+(Content-Signal values) remains.
+
+M1 results against the Hugo 0.169 build of the same commit:
+
+- The same 146 posts are rendered (drafts and future-dated pages excluded, as Hugo).
+- Heading IDs: the 409-heading golden test passes, and all 413 headings across
+  whole posts match Hugo's output.
+- Summaries: 131 of 146 match Hugo's feed descriptions word for word. The other
+  15 all contain a `{{< ref >}}` shortcode, which M2 expands.
+- Two builds are byte-identical. A full build takes about 130 ms (debug).
 
 ferrisite is a pure-Rust static site generator for one known site first,
 www.grahambrooks.com, currently built with Hugo 0.169 from
@@ -112,8 +123,10 @@ Two parity details matter because existing links depend on them:
   to `-`, punctuation dropped), or `#fragment` links and the table of contents
   break. A golden test pins this against Hugo's output for every heading in the
   corpus.
-- **Summaries** follow Hugo: content before `<!--more-->`, else `summary:`/
-  `description:`, else the first 70 words. Feed descriptions depend on it.
+- **Summaries** follow Hugo 0.134+: content before `<!--more-->`, else the
+  `summary:` frontmatter, else **whole top-level blocks taken until the word
+  count reaches 70** (never a cut paragraph). Checked against Hugo's feed
+  descriptions; `description:` is not used for summaries.
 
 Code blocks are dispatched by info string: `mermaid`, `plantuml`/`puml`,
 `forge` and `drawio` go to diagrams (section 7); everything else to

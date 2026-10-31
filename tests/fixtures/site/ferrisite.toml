@@ -1,0 +1,6 @@
+base_url = "https://example.test"
+title = "Fixture"
+taxonomies = ["tags"]
+
+[pagination]
+page_size = 2
