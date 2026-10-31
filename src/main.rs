@@ -28,6 +28,10 @@ enum Command {
         /// Include pages dated in the future.
         #[arg(long)]
         future: bool,
+        /// Build for this base URL instead of ferrisite.toml's (for example
+        /// http://localhost:8000/ to preview with a static file server).
+        #[arg(long)]
+        base_url: Option<String>,
     },
     /// Check a built site: internal links, and with --agents the agent-readable output.
     Check {
@@ -79,6 +83,7 @@ fn main() -> Result<()> {
             out,
             drafts,
             future,
+            base_url,
         } => {
             let started = Instant::now();
             let report = ferrisite::build::build(&ferrisite::build::Options {
@@ -86,7 +91,7 @@ fn main() -> Result<()> {
                 out: out.clone(),
                 drafts,
                 future,
-                base_url: None,
+                base_url,
             })?;
             println!(
                 "Built {} pages, {} list pages, {} files (+{} static) into {} in {} ms",
