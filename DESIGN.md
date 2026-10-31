@@ -1,6 +1,43 @@
 # ferrisite design
 
-Status: **M2 done, 2026-10-31.** `ferrisite parity` passes against Hugo's
+Status: **M3 implemented, 2026-10-31; one criterion blocked on puml.**
+
+**M3 results:**
+
+- Diagrams: Mermaid (`mmd`), PlantUML (`puml`) and forge (`forge-dsl`) render at
+  build time from Markdown fences and AsciiDoc blocks, each laid out once and
+  painted in both palettes (decision O2), with every SVG `id` prefixed per copy
+  so the light and dark copies can't resolve each other's markers. All 18
+  Mermaid blocks on grahambrooks.com (13 published, 5 in drafts) render;
+  unsupported syntax fails the build naming the block's file line.
+- Highlighting: syntect with the pure-Rust regex engine, class-based, one
+  generated stylesheet (`[markup] stylesheet`, exposed to templates as
+  `site.stylesheet`) with light rules and dark rules under
+  `html[data-mode="dark"]` plus an OS-preference fallback. Markdown fences, the
+  `highlight` shortcode and AsciiDoc `[source]` blocks share it.
+- AsciiDoc: `.adoc` content through `adoc`; diagram and source blocks are
+  swapped for passthrough blocks before conversion; error diagnostics fail
+  the build. Parity with the Hugo build still passes; two builds identical.
+- Errors from shortcodes, diagrams and AsciiDoc name file lines (frontmatter
+  counted).
+- **Blocked:** the 7 event-driven architecture files, built in a scratch site
+  (they aren't in `content/` yet): 4 of 7 build, using fixes to `puml` that
+  are local and unpublished; 3 need `puml` features it lacks.
+  - Fixed locally in `~/dev/projects/puml`, pending Graham: `skinparam
+    <element> { … }` blocks never parsed in sequence diagrams (the rule
+    stopped at `" }"`), and `autonumber start step "format"` (start kept,
+    format ignored, step other than 1 rejected).
+  - Missing: sequence `box "…"` participant groups (4 diagrams) and labelled
+    class relations `A -- B : label` (1 diagram).
+- Worked around in ferrisite, to be fixed upstream: `adoc` doesn't substitute
+  attribute references in `include::` targets (`include::{code}/x.clj[]`);
+  ferrisite substitutes header-defined attributes first. The files' code
+  samples (`_code-samples/`) survive only under the site repo's `jekyll-final`
+  tag.
+- `puml` diagram kinds without a scene (use case, timing, mind map, Gantt) use
+  puml's own SVG, light palette only, in both slots.
+
+Earlier milestone, M2: `ferrisite parity` passes against Hugo's
 build of grahambrooks.com (details under "M2 results" below).
 
 **M2 results** (Hugo 0.169 build vs ferrisite build of the same commit):

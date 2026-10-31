@@ -26,7 +26,9 @@ All ordering, filtering and pagination happen before rendering, so templates
 only loop and print.
 
 **`site`**: `title`, `base_url`, `author`, `description`, `params` (the
-`[params]` table from `ferrisite.toml`).
+`[params]` table from `ferrisite.toml`), `stylesheet` (absolute URL of the
+generated stylesheet for syntax highlighting and diagram light/dark switching;
+link it from your base template).
 
 **`page`**: present on single pages, and on list and home pages that have an
 `_index` file.

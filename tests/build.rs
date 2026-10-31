@@ -149,7 +149,7 @@ fn unknown_shortcode_fails_with_file_and_line() {
     .expect("unknown shortcode must fail");
     let msg = format!("{err:#}");
     assert!(
-        msg.contains("post/a.md") && msg.contains("line 2") && msg.contains("mystery"),
+        msg.contains("post/a.md") && msg.contains("line 5") && msg.contains("mystery"),
         "{msg}"
     );
 }
@@ -233,4 +233,79 @@ fn collect(root: &Path, dir: &Path, out: &mut Vec<(String, Vec<u8>)>) {
             ));
         }
     }
+}
+
+fn temp_site(files: &[(&str, &str)]) -> (tempfile::TempDir, PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("site");
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(
+        root.join("ferrisite.toml"),
+        "base_url = \"https://e.test\"\ntitle = \"T\"\n",
+    )
+    .unwrap();
+    for (path, body) in files {
+        let p = root.join(path);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, body).unwrap();
+    }
+    (dir, root)
+}
+
+#[test]
+fn diagrams_highlighting_and_asciidoc() {
+    let (dir, root) = temp_site(&[
+        (
+            "content/post/md.md",
+            "---\ntitle: M\n---\n\n```mermaid\nflowchart LR\n  A[Start] --> B[End]\n```\n\n```rust\nfn main() {}\n```\n",
+        ),
+        (
+            "content/post/doc.adoc",
+            "---\ntitle: D\n---\n= D\n\n== Flow\n\n[plantuml, seq, svg]\n----\nAlice -> Bob: hello\n----\n\n[source,rust]\n----\nlet x = 1;\n----\n",
+        ),
+    ]);
+    let out = dir.path().join("out");
+    build(&Options {
+        root,
+        out: out.clone(),
+        drafts: false,
+        future: false,
+    })
+    .expect("build");
+    let md = read(&out, "post/md/index.html");
+    assert_eq!(md.matches("<svg").count(), 2, "mermaid in light and dark");
+    assert!(md.contains("class=\"diagram diagram-mermaid\"") && md.contains("Start"));
+    assert!(md.contains("<pre class=\"highlight\"><code class=\"language-rust\">"));
+    assert!(md.contains("class=\"sx-"), "highlighted spans");
+    let doc = read(&out, "post/doc/index.html");
+    assert!(doc.contains("class=\"diagram diagram-plantuml\"") && doc.contains("Alice"));
+    assert!(
+        doc.contains("class=\"sx-"),
+        "AsciiDoc source block highlighted"
+    );
+    assert!(doc.contains("<h2>Flow</h2>"));
+    let css = read(&out, "css/ferrisite.css");
+    assert!(css.contains("html[data-mode=\"dark\"] .diagram-dark { display: block; }"));
+    assert!(css.contains("html[data-mode=\"dark\"] .sx-"));
+}
+
+#[test]
+fn broken_diagram_fails_with_file_and_line() {
+    let (dir, root) = temp_site(&[(
+        "content/post/bad.md",
+        "---\ntitle: B\n---\n\nIntro.\n\n```mermaid\nnot a diagram\n```\n",
+    )]);
+    let err = build(&Options {
+        root,
+        out: dir.path().join("out"),
+        drafts: false,
+        future: false,
+    })
+    .err()
+    .expect("an unsupported diagram must fail the build");
+    let msg = format!("{err:#}");
+    assert!(
+        msg.contains("post/bad.md") && msg.contains("line 7:") && msg.contains("mermaid"),
+        "{msg}"
+    );
 }

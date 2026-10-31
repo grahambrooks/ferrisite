@@ -21,6 +21,7 @@ pub enum Kind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Format {
     Markdown,
+    AsciiDoc,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +35,8 @@ pub struct Page {
     pub url: String,
     pub fm: FrontMatter,
     pub body: String,
+    /// 1-based line of the file where `body` starts, so errors can name file lines.
+    pub body_line: usize,
     pub format: Format,
 }
 
@@ -68,7 +71,7 @@ pub fn discover(content_dir: &Path, taxonomy_dirs: &[String]) -> Result<Discover
             .unwrap_or("");
         let format = match ext {
             "md" | "markdown" => Format::Markdown,
-            "adoc" => bail!("{rel}: AsciiDoc content is not supported yet (milestone M3)"),
+            "adoc" | "asciidoc" => Format::AsciiDoc,
             _ => {
                 found.ignored.push(rel);
                 continue;
@@ -91,11 +94,13 @@ pub fn discover(content_dir: &Path, taxonomy_dirs: &[String]) -> Result<Discover
         } else {
             top.to_string()
         };
+        let body_line = raw[..raw.len() - body.len()].matches('\n').count() + 1;
         found.pages.push(Page {
             source: rel,
             kind,
             section,
             url,
+            body_line,
             body: body.to_string(),
             fm,
             format,

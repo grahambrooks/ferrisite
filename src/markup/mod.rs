@@ -3,16 +3,24 @@
 //! footnotes, definition lists, typographer, raw HTML allowed).
 
 pub mod anchor;
+pub mod asciidoc;
+pub mod highlight;
 pub mod shortcodes;
 pub mod text;
 
+use crate::diagrams::{Diagrams, Lang};
 use anchor::IdFactory;
-use comrak::adapters::{HeadingAdapter, HeadingMeta};
+use comrak::adapters::{
+    CodefenceRendererAdapter, HeadingAdapter, HeadingMeta, SyntaxHighlighterAdapter,
+};
 use comrak::nodes::Sourcepos;
 use comrak::options::Plugins;
 use comrak::{Options, markdown_to_html_with_plugins};
+use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct Heading {
@@ -68,16 +76,192 @@ impl HeadingAdapter for Headings {
     }
 }
 
+/// Highlighted code blocks via syntect (see `highlight`).
+struct Highlighter;
+
+impl SyntaxHighlighterAdapter for Highlighter {
+    fn write_highlighted(
+        &self,
+        output: &mut dyn fmt::Write,
+        lang: Option<&str>,
+        code: &str,
+    ) -> fmt::Result {
+        let html = lang
+            .filter(|l| !l.is_empty())
+            .and_then(|l| highlight::spans(l, code))
+            .unwrap_or_else(|| highlight::escape(code));
+        output.write_str(&html)
+    }
+
+    fn write_pre_tag(
+        &self,
+        output: &mut dyn fmt::Write,
+        _attributes: HashMap<&'static str, Cow<'_, str>>,
+    ) -> fmt::Result {
+        output.write_str("<pre class=\"highlight\">")
+    }
+
+    fn write_code_tag(
+        &self,
+        output: &mut dyn fmt::Write,
+        attributes: HashMap<&'static str, Cow<'_, str>>,
+    ) -> fmt::Result {
+        match attributes.get("class") {
+            Some(class) => write!(output, "<code class=\"{}\">", highlight::escape(class)),
+            None => output.write_str("<code>"),
+        }
+    }
+}
+
+/// What diagram blocks need: the renderer and a page-unique id prefix.
+#[derive(Clone, Copy)]
+pub struct Fences<'a> {
+    pub diagrams: Option<&'a Diagrams>,
+    /// Unique per page, so diagrams from several pages' summaries on one list
+    /// page can't share ids.
+    pub id_prefix: &'a str,
+    /// Lines in the file before the source being rendered, so errors name
+    /// file lines.
+    pub line_offset: usize,
+}
+
+/// File lines of the diagram fences in `source`, in document order (the order
+/// comrak renders them). comrak only reports positions to fence renderers
+/// with its `sourcepos` option, which would also add attributes to all HTML,
+/// and those positions would be relative to the placeholder-expanded text.
+fn diagram_fence_lines(source: &str, line_offset: usize) -> Vec<usize> {
+    let mut lines = Vec::new();
+    let mut open: Option<(char, usize)> = None;
+    for (i, raw) in source.lines().enumerate() {
+        let line = raw.trim_start_matches([' ', '>', '\t']);
+        let Some(c) = line.chars().next().filter(|c| *c == '`' || *c == '~') else {
+            continue;
+        };
+        let run = line.chars().take_while(|x| *x == c).count();
+        if run < 3 {
+            continue;
+        }
+        match open {
+            Some((oc, olen)) => {
+                if oc == c && run >= olen && line[run..].trim().is_empty() {
+                    open = None;
+                }
+            }
+            None => {
+                let lang = line[run..].split_whitespace().next().unwrap_or("");
+                if Lang::from_name(lang).is_some() {
+                    lines.push(i + 1 + line_offset);
+                }
+                open = Some((c, run));
+            }
+        }
+    }
+    lines
+}
+
+/// Renders ```mermaid / ```plantuml / ```forge blocks. comrak adapters can
+/// only return `fmt::Error`, so failures are collected and reported after
+/// rendering, with the block's line.
+struct DiagramFence<'a> {
+    lang: Lang,
+    diagrams: &'a Diagrams,
+    prefix: &'a str,
+    counter: &'a AtomicUsize,
+    errors: &'a Mutex<Vec<String>>,
+    /// File line of the n-th diagram fence.
+    fence_lines: &'a [usize],
+}
+
+impl CodefenceRendererAdapter for DiagramFence<'_> {
+    fn write(
+        &self,
+        output: &mut dyn fmt::Write,
+        _lang: &str,
+        meta: &str,
+        code: &str,
+        _sourcepos: Option<Sourcepos>,
+    ) -> fmt::Result {
+        let n = self.counter.fetch_add(1, Ordering::Relaxed);
+        let id = format!("{}{n}", self.prefix);
+        match self.diagrams.render(self.lang, code, meta, &id) {
+            Ok(html) => output.write_str(&html),
+            Err(e) => {
+                let line = self.fence_lines.get(n).copied().unwrap_or(0);
+                self.errors
+                    .lock()
+                    .expect("diagram errors")
+                    .push(format!("line {line}: {} diagram: {e:#}", self.lang.name()));
+                Ok(())
+            }
+        }
+    }
+}
+
+/// Markdown without diagram support (diagram blocks render as code).
 pub fn markdown(source: &str) -> Rendered {
+    markdown_with(
+        source,
+        Fences {
+            diagrams: None,
+            id_prefix: "",
+            line_offset: 0,
+        },
+        &[],
+    )
+    .expect("rendering without diagrams cannot fail")
+}
+
+/// `fence_lines`: file lines of the diagram fences, for error messages.
+pub fn markdown_with(
+    source: &str,
+    fences: Fences,
+    fence_lines: &[usize],
+) -> anyhow::Result<Rendered> {
     let options = options();
     let adapter = Headings {
         state: Mutex::new((IdFactory::default(), Vec::new())),
     };
+    let counter = AtomicUsize::new(0);
+    let errors = Mutex::new(Vec::new());
+    let fence = |lang| {
+        fences.diagrams.map(|diagrams| DiagramFence {
+            lang,
+            diagrams,
+            prefix: fences.id_prefix,
+            counter: &counter,
+            errors: &errors,
+            fence_lines,
+        })
+    };
+    let (mermaid, plantuml, forge) = (
+        fence(Lang::Mermaid),
+        fence(Lang::PlantUml),
+        fence(Lang::Forge),
+    );
     let mut plugins = Plugins::default();
     plugins.render.heading_adapter = Some(&adapter);
+    plugins.render.codefence_syntax_highlighter = Some(&Highlighter);
+    for (names, adapter) in [
+        (&["mermaid", "mmd"][..], &mermaid),
+        (&["plantuml", "puml"][..], &plantuml),
+        (&["forge"][..], &forge),
+    ] {
+        if let Some(a) = adapter {
+            for name in names {
+                plugins
+                    .render
+                    .codefence_renderers
+                    .insert(name.to_string(), a as &dyn CodefenceRendererAdapter);
+            }
+        }
+    }
     let html = markdown_to_html_with_plugins(source, &options, &plugins);
+    let errors = errors.into_inner().expect("diagram errors");
+    if !errors.is_empty() {
+        anyhow::bail!("{}", errors.join("\n"));
+    }
     let (_, headings) = adapter.state.into_inner().expect("heading state");
-    Rendered { html, headings }
+    Ok(Rendered { html, headings })
 }
 
 /// Render Markdown containing Hugo shortcodes: calls become placeholders,
@@ -85,9 +269,11 @@ pub fn markdown(source: &str) -> Rendered {
 pub fn markdown_with_shortcodes(
     source: &str,
     expander: &dyn shortcodes::Expand,
+    fences: Fences,
 ) -> anyhow::Result<Rendered> {
-    let (text, outputs) = shortcodes::expand_to_placeholders(source, expander)?;
-    let mut rendered = markdown(&text);
+    let fence_lines = diagram_fence_lines(source, fences.line_offset);
+    let (text, outputs) = shortcodes::expand_to_placeholders(source, expander, fences.line_offset)?;
+    let mut rendered = markdown_with(&text, fences, &fence_lines)?;
     if !outputs.is_empty() {
         rendered.html = shortcodes::substitute(&rendered.html, &outputs);
         for h in &mut rendered.headings {

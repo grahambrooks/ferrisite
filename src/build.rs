@@ -2,6 +2,7 @@
 
 use crate::config::Config;
 use crate::content;
+use crate::diagrams::Diagrams;
 use crate::output;
 use crate::render::{OutputFile, Renderer};
 use crate::site::{self, Site, Visibility};
@@ -39,9 +40,22 @@ pub fn build(opts: &Options) -> Result<Report> {
         now: now()?,
     };
     let renderer = Renderer::new(&config, &opts.root.join("templates"))?;
-    let site = site::resolve(config, &opts.root, found, vis, &renderer)?;
+    let diagrams = Diagrams::new(&opts.root.join(&config.markup.include_base))?;
+    let stylesheet = OutputFile {
+        path: config.markup.stylesheet.trim_start_matches('/').to_string(),
+        contents: format!(
+            "{}\n{}",
+            crate::markup::highlight::css(
+                &config.markup.highlight_light,
+                &config.markup.highlight_dark
+            )?,
+            crate::diagrams::css()
+        ),
+    };
+    let site = site::resolve(config, &opts.root, found, vis, &renderer, &diagrams)?;
     let mut files = renderer.render_site(&site)?;
     files.extend(output::all(&site));
+    files.push(stylesheet);
     files.sort_by(|a, b| a.path.cmp(&b.path));
     if let Some(w) = files.windows(2).find(|w| w[0].path == w[1].path) {
         bail!("two outputs claim {}", w[0].path);

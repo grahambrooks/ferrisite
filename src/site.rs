@@ -9,7 +9,9 @@
 
 use crate::config::{Config, SectionConfig};
 use crate::content::frontmatter::{string_list, toml_to_yaml};
-use crate::content::{Discovered, Kind, Page};
+use crate::content::{Discovered, Format, Kind, Page};
+use crate::diagrams::Diagrams;
+use crate::markup::Fences;
 use crate::markup::shortcodes::{Call, Expand};
 use crate::markup::{self, Heading, text};
 use crate::render::Renderer;
@@ -185,6 +187,7 @@ pub fn resolve(
     found: Discovered,
     vis: Visibility,
     renderer: &Renderer,
+    diagrams: &Diagrams,
 ) -> Result<Site> {
     // Pass one: visibility, order, sections and lists from frontmatter alone.
     let mut pages: Vec<Page> = found
@@ -276,13 +279,21 @@ pub fn resolve(
         inline_svg_from: config.markup.inline_svg_from.as_ref().map(|d| root.join(d)),
         table_wrapper: config.markup.table_wrapper.clone(),
     };
+    let include_base = root.join(&config.markup.include_base);
+    let env = RenderEnv {
+        index: &index,
+        renderer,
+        diagrams,
+        hooks: &hooks,
+        include_base: &include_base,
+        summary_length,
+    };
     let entries: Vec<Entry> = pages
         .into_par_iter()
         .enumerate()
         .map(|(i, page)| {
             let source = page.source.clone();
-            render_entry(page, &index, i, renderer, summary_length, &hooks)
-                .with_context(|| source.clone())
+            render_entry(page, i, &env).with_context(|| source.clone())
         })
         .collect::<Result<_>>()?;
 
@@ -442,33 +453,69 @@ pub fn filter_matches(
         && !(!exclude.is_empty() && exclude.iter().all(|(k, v)| has(k, v)))
 }
 
-fn render_entry(
-    page: Page,
-    index: &Index,
-    me: usize,
-    renderer: &Renderer,
+/// What rendering one entry needs from the rest of the build.
+struct RenderEnv<'a> {
+    index: &'a Index,
+    renderer: &'a Renderer,
+    diagrams: &'a Diagrams,
+    hooks: &'a markup::Hooks,
+    include_base: &'a std::path::Path,
     summary_length: usize,
-    hooks: &markup::Hooks,
-) -> Result<Entry> {
+}
+
+/// A page-unique prefix for ids inside inline diagrams.
+fn id_prefix(source: &str) -> String {
+    let mut p: String = source
+        .rsplit_once('.')
+        .map(|(a, _)| a)
+        .unwrap_or(source)
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    p.push_str("-d");
+    p
+}
+
+fn render_entry(page: Page, me: usize, env: &RenderEnv) -> Result<Entry> {
+    let RenderEnv {
+        index,
+        renderer,
+        hooks,
+        summary_length,
+        ..
+    } = *env;
+    let prefix = id_prefix(&page.source);
+    let fences = Fences {
+        diagrams: Some(env.diagrams),
+        id_prefix: &prefix,
+        line_offset: page.body_line - 1,
+    };
     let expander = PageExpander {
         index,
         renderer,
         me,
     };
-    let mut rendered = markup::markdown_with_shortcodes(&page.body, &expander)?;
+    let mut rendered = match page.format {
+        Format::Markdown => markup::markdown_with_shortcodes(&page.body, &expander, fences)?,
+        Format::AsciiDoc => {
+            markup::asciidoc::render(&page.body, &page.source, env.include_base, fences)?
+        }
+    };
     rendered.html = hooks.apply(&rendered.html)?;
     let plain = text::plain(&rendered.html)
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
     let word_count = text::word_count(&rendered.html);
-    let summary = if let Some((before, _)) = page.body.split_once("<!--more-->") {
-        markup::markdown_with_shortcodes(before, &expander)?
+    let summary = if page.format == Format::AsciiDoc {
+        text::auto_summary(&rendered.html, summary_length)
+    } else if let Some((before, _)) = page.body.split_once("<!--more-->") {
+        markup::markdown_with_shortcodes(before, &expander, fences)?
             .html
             .trim_end()
             .to_string()
     } else if let Some(s) = &page.fm.summary {
-        markup::markdown_with_shortcodes(s, &expander)?
+        markup::markdown_with_shortcodes(s, &expander, fences)?
             .html
             .trim_end()
             .to_string()
@@ -511,20 +558,11 @@ impl Expand for PageExpander<'_> {
                 Ok(permalink)
             }
             "highlight" => {
-                // Syntax highlighting arrives in M3; until then a plain code block.
                 let lang = call.args.first().map(String::as_str).unwrap_or("");
                 let code = inner.unwrap_or("");
                 let code = code.strip_prefix('\n').unwrap_or(code);
                 let code = code.strip_suffix('\n').unwrap_or(code);
-                let class = if lang.is_empty() {
-                    String::new()
-                } else {
-                    format!(" class=\"language-{lang}\"")
-                };
-                Ok(format!(
-                    "<pre><code{class}>{}</code></pre>\n",
-                    escape_html(code)
-                ))
+                Ok(markup::highlight::block(lang, &format!("{code}\n")))
             }
             name => self
                 .renderer
@@ -534,13 +572,6 @@ impl Expand for PageExpander<'_> {
                 }),
         }
     }
-}
-
-fn escape_html(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
 }
 
 fn collect_aliases(

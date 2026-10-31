@@ -98,7 +98,7 @@ pub struct FeedConfig {
     pub order: FeedOrder,
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MarkupConfig {
     /// Inline local `.svg` images from this directory (relative to the site
@@ -109,6 +109,48 @@ pub struct MarkupConfig {
     /// Wrap every table in `<div class="...">`, e.g. for horizontal scrolling.
     #[serde(default)]
     pub table_wrapper: Option<String>,
+    /// Directory (relative to the site root) that AsciiDoc `include::` and
+    /// PlantUML `!include` paths resolve from. Default: the site root.
+    #[serde(default = "dot")]
+    pub include_base: String,
+    /// Generated stylesheet for syntax highlighting and diagram light/dark
+    /// switching, relative to the output root.
+    #[serde(default = "default_stylesheet")]
+    pub stylesheet: String,
+    /// syntect theme names for code in light and dark mode.
+    #[serde(default = "default_light_theme")]
+    pub highlight_light: String,
+    #[serde(default = "default_dark_theme")]
+    pub highlight_dark: String,
+}
+
+impl Default for MarkupConfig {
+    fn default() -> Self {
+        MarkupConfig {
+            inline_svg_from: None,
+            table_wrapper: None,
+            include_base: dot(),
+            stylesheet: default_stylesheet(),
+            highlight_light: default_light_theme(),
+            highlight_dark: default_dark_theme(),
+        }
+    }
+}
+
+fn dot() -> String {
+    ".".to_string()
+}
+
+fn default_stylesheet() -> String {
+    "css/ferrisite.css".to_string()
+}
+
+fn default_light_theme() -> String {
+    "InspiredGitHub".to_string()
+}
+
+fn default_dark_theme() -> String {
+    "base16-ocean.dark".to_string()
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]

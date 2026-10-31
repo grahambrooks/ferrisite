@@ -40,6 +40,8 @@ struct SiteCtx {
     author: Option<String>,
     description: Option<String>,
     params: BTreeMap<String, toml::Value>,
+    /// Absolute URL of the generated stylesheet (highlighting, diagram modes).
+    stylesheet: String,
 }
 
 #[derive(Serialize)]
@@ -124,6 +126,7 @@ impl Renderer {
                 author: config.author.clone(),
                 description: config.description.clone(),
                 params: config.params.clone(),
+                stylesheet: config.permalink(&config.markup.stylesheet),
             },
         })
     }

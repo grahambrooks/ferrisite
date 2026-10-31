@@ -26,16 +26,26 @@ pub struct Call {
 const STANDALONE: &[&str] = &["ref", "relref"];
 
 pub fn parse(src: &str) -> Result<Vec<Node>> {
+    parse_with_offset(src, 0)
+}
+
+/// Like `parse`, with line numbers shifted by `line_offset` (lines before
+/// `src` in its file), so errors and `Call::line` name file lines.
+pub fn parse_with_offset(src: &str, line_offset: usize) -> Result<Vec<Node>> {
     let mut pos = 0;
-    let nodes = parse_until(src, &mut pos, None)?;
-    Ok(nodes)
+    parse_until(src, &mut pos, None, line_offset)
 }
 
-fn line_of(src: &str, offset: usize) -> usize {
-    src[..offset].matches('\n').count() + 1
+fn line_of(src: &str, offset: usize, line_offset: usize) -> usize {
+    src[..offset].matches('\n').count() + 1 + line_offset
 }
 
-fn parse_until(src: &str, pos: &mut usize, until: Option<(&str, usize)>) -> Result<Vec<Node>> {
+fn parse_until(
+    src: &str,
+    pos: &mut usize,
+    until: Option<(&str, usize)>,
+    line_offset: usize,
+) -> Result<Vec<Node>> {
     let mut nodes = Vec::new();
     loop {
         let Some(rel) = src[*pos..].find("{{<") else {
@@ -48,7 +58,7 @@ fn parse_until(src: &str, pos: &mut usize, until: Option<(&str, usize)>) -> Resu
         };
         let start = *pos + rel;
         push_text(&mut nodes, &src[*pos..start]);
-        let line = line_of(src, start);
+        let line = line_of(src, start, line_offset);
         let Some(end_rel) = src[start..].find(">}}") else {
             bail!("line {line}: unterminated shortcode tag");
         };
@@ -78,7 +88,7 @@ fn parse_until(src: &str, pos: &mut usize, until: Option<(&str, usize)>) -> Resu
             && !STANDALONE.contains(&name.as_str())
             && has_closing(&src[*pos..], &name);
         let inner = if paired {
-            Some(parse_until(src, pos, Some((&name, line)))?)
+            Some(parse_until(src, pos, Some((&name, line)), line_offset)?)
         } else {
             None
         };
@@ -175,8 +185,12 @@ pub trait Expand {
 
 /// Replace top-level calls with placeholder tokens. Returns the source to feed
 /// the Markdown renderer and the outputs to substitute afterwards.
-pub fn expand_to_placeholders(src: &str, expander: &dyn Expand) -> Result<(String, Vec<String>)> {
-    let nodes = parse(src)?;
+pub fn expand_to_placeholders(
+    src: &str,
+    expander: &dyn Expand,
+    line_offset: usize,
+) -> Result<(String, Vec<String>)> {
+    let nodes = parse_with_offset(src, line_offset)?;
     let mut text = String::with_capacity(src.len());
     let mut outputs = Vec::new();
     for node in &nodes {
@@ -268,6 +282,7 @@ mod tests {
         let (text, outs) = expand_to_placeholders(
             "{{< block >}}{{< column >}}x{{< /column >}}{{< /block >}}",
             &Echo,
+            0,
         )
         .unwrap();
         assert_eq!(text, token(0));
@@ -287,7 +302,7 @@ mod tests {
 
     #[test]
     fn errors_name_the_line() {
-        let err = expand_to_placeholders("one\ntwo {{< boom >}}", &Echo).unwrap_err();
+        let err = expand_to_placeholders("one\ntwo {{< boom >}}", &Echo, 0).unwrap_err();
         assert!(err.to_string().contains("line 2"), "{err}");
         let err = parse("x\n{{< tip >}}never closed{{< /tip").unwrap_err();
         assert!(err.to_string().contains("line 2"), "{err}");

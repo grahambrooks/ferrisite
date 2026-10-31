@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ site.title }}{% endblock %}</title>
+<link rel="stylesheet" href="{{ site.stylesheet }}">
 {% if page and page.permalink %}<link rel="canonical" href="{{ page.permalink }}">{% endif %}
 {% if page and page.description %}<meta name="description" content="{{ page.description }}">{% elif site.description %}<meta name="description" content="{{ site.description }}">{% endif %}
 </head>

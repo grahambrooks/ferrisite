@@ -3,6 +3,7 @@
 pub mod build;
 pub mod config;
 pub mod content;
+pub mod diagrams;
 pub mod markup;
 pub mod output;
 pub mod parity;
