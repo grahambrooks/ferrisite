@@ -263,7 +263,10 @@ error naming file and line. No user-defined shortcodes in v1.
 Class-based output (`ClassedHTMLGenerator`), with a generated stylesheet for
 light and dark. Class names differ from Hugo's chroma classes, so the site's
 `chroma.css` is replaced, not reused. Parity is checked on URLs, links and
-feeds, not on highlighting markup.
+feeds, not on highlighting markup. Each theme's rules are scoped to its own
+mode (`html[data-mode="light"]`, or `auto` with no dark preference, and the
+reverse), never left unscoped: InspiredGitHub's JSON selectors are specific
+enough to out-rank scoped dark rules, which left JSON dark-blue on dark.
 
 ## 7. Diagrams
 
@@ -291,6 +294,14 @@ diagram bytes and needs no upstream change. A CSS-variable output mode in
 `diagram-scene`'s SVG writer would halve that later, without changing the
 templates. The Markdown copy (section 9.1) carries the diagram source once,
 not the SVG.
+
+**Site palette.** `[markup.diagram_light]` and `[markup.diagram_dark]` in
+`ferrisite.toml` override the themes' `background`, `surface`, `text`,
+`muted`, `line` and `accent` with `#rrggbb` colours, so diagrams can match a
+site's existing look (grahambrooks.com mirrors its old Mermaid.js config:
+outline-only nodes in one accent colour on the code-block background).
+`background` also backs edge labels, so it should match what the diagram
+sits on.
 
 ## 8. Templates and theme
 

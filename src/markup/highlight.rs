@@ -108,9 +108,11 @@ pub fn escape(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
-/// Stylesheet for highlighted code: `light` theme by default, `dark` when the
-/// page's `data-mode` is `dark`, or when it's `auto` (or unset) and the
-/// operating system prefers dark.
+/// Stylesheet for highlighted code: the `dark` theme when the page's
+/// `data-mode` is `dark`, or when it's `auto` (or unset) and the operating
+/// system prefers dark; the `light` theme otherwise. Each theme is scoped so
+/// it only matches in its own mode: a theme's more specific selectors (e.g.
+/// InspiredGitHub's JSON rules) would otherwise out-rank the other's.
 pub fn css(light: &str, dark: &str) -> Result<String> {
     let themes = ThemeSet::load_defaults();
     let get = |name: &str| {
@@ -124,7 +126,10 @@ pub fn css(light: &str, dark: &str) -> Result<String> {
     let light_css = css_for_theme_with_class_style(get(light)?, CLASS_STYLE)?;
     let dark_css = css_for_theme_with_class_style(get(dark)?, CLASS_STYLE)?;
     let mut out = format!("/* ferrisite syntax highlighting: {light} (light), {dark} (dark). */\n");
-    out.push_str(&light_css);
+    out.push_str(&scope(&light_css, "html[data-mode=\"light\"]"));
+    out.push_str("@media not all and (prefers-color-scheme: dark) {\n");
+    out.push_str(&scope(&light_css, "html:not([data-mode=\"dark\"])"));
+    out.push_str("}\n");
     out.push_str(&scope(&dark_css, "html[data-mode=\"dark\"]"));
     out.push_str("@media (prefers-color-scheme: dark) {\n");
     out.push_str(&scope(&dark_css, "html:not([data-mode=\"light\"])"));
@@ -207,11 +212,16 @@ mod tests {
     }
 
     #[test]
-    fn css_scopes_dark_rules() {
+    fn css_scopes_each_theme_to_its_mode() {
         let sheet = css("InspiredGitHub", "base16-ocean.dark").unwrap();
-        assert!(sheet.contains(".sx-"));
+        assert!(sheet.contains("html[data-mode=\"light\"] .sx-"));
         assert!(sheet.contains("html[data-mode=\"dark\"] .sx-"));
+        assert!(sheet.contains("@media not all and (prefers-color-scheme: dark)"));
         assert!(sheet.contains("@media (prefers-color-scheme: dark)"));
+        // No unscoped rule, so neither theme leaks into the other's mode.
+        for line in sheet.lines() {
+            assert!(!line.starts_with(".sx-"), "unscoped rule: {line}");
+        }
         assert!(css("InspiredGitHub", "nope").is_err());
     }
 }

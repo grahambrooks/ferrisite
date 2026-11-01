@@ -50,7 +50,8 @@ pub fn build(opts: &Options) -> Result<Report> {
         now: now()?,
     };
     let renderer = Renderer::new(&config, &opts.root.join("templates"))?;
-    let diagrams = Diagrams::new(&opts.root.join(&config.markup.include_base))?;
+    let diagrams = Diagrams::new(&opts.root.join(&config.markup.include_base))?
+        .with_palettes(&config.markup.diagram_light, &config.markup.diagram_dark)?;
     let stylesheet = OutputFile {
         path: config.markup.stylesheet.trim_start_matches('/').to_string(),
         contents: format!(

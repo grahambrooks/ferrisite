@@ -135,6 +135,28 @@ pub struct MarkupConfig {
     pub highlight_light: String,
     #[serde(default = "default_dark_theme")]
     pub highlight_dark: String,
+    /// Colours for build-time diagrams in light and dark mode, over
+    /// diagram-scene's defaults (e.g. to match the site's palette).
+    #[serde(default)]
+    pub diagram_light: DiagramPalette,
+    #[serde(default)]
+    pub diagram_dark: DiagramPalette,
+}
+
+/// Overrides for diagram-scene's theme roles, each a `#rrggbb` colour.
+/// `background` also backs edge labels, so it should match whatever the
+/// diagram sits on.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiagramPalette {
+    pub background: Option<String>,
+    /// Node fills.
+    pub surface: Option<String>,
+    pub text: Option<String>,
+    pub muted: Option<String>,
+    /// Edges and outlines.
+    pub line: Option<String>,
+    pub accent: Option<String>,
 }
 
 impl Default for MarkupConfig {
@@ -146,6 +168,8 @@ impl Default for MarkupConfig {
             stylesheet: default_stylesheet(),
             highlight_light: default_light_theme(),
             highlight_dark: default_dark_theme(),
+            diagram_light: DiagramPalette::default(),
+            diagram_dark: DiagramPalette::default(),
         }
     }
 }

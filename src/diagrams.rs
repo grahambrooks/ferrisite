@@ -45,6 +45,8 @@ pub struct Diagrams {
     fonts: mmd::text::BundledFonts,
     /// Where PlantUML `!include` and forge imports resolve from.
     base_dir: PathBuf,
+    light: Theme,
+    dark: Theme,
 }
 
 impl Diagrams {
@@ -53,7 +55,20 @@ impl Diagrams {
             fonts: mmd::text::BundledFonts::new()
                 .ok_or_else(|| anyhow!("mmd's bundled fonts could not be loaded"))?,
             base_dir: base_dir.to_path_buf(),
+            light: Theme::light(),
+            dark: Theme::dark(),
         })
+    }
+
+    /// Apply the site's palette overrides to the light and dark themes.
+    pub fn with_palettes(
+        mut self,
+        light: &crate::config::DiagramPalette,
+        dark: &crate::config::DiagramPalette,
+    ) -> Result<Diagrams> {
+        apply_palette(&mut self.light, light).context("[markup.diagram_light]")?;
+        apply_palette(&mut self.dark, dark).context("[markup.diagram_dark]")?;
+        Ok(self)
     }
 
     /// Render one diagram to HTML holding a light and a dark copy. `id` must
@@ -95,8 +110,8 @@ impl Diagrams {
             }
         };
         (
-            diagram_scene::svg::to_svg(scene, &theme(Theme::light())),
-            diagram_scene::svg::to_svg(scene, &theme(Theme::dark())),
+            diagram_scene::svg::to_svg(scene, &theme(self.light.clone())),
+            diagram_scene::svg::to_svg(scene, &theme(self.dark.clone())),
         )
     }
 
@@ -164,6 +179,38 @@ impl Diagrams {
     }
 }
 
+fn apply_palette(theme: &mut Theme, p: &crate::config::DiagramPalette) -> Result<()> {
+    for (slot, value) in [
+        (&mut theme.background, &p.background),
+        (&mut theme.surface, &p.surface),
+        (&mut theme.text, &p.text),
+        (&mut theme.muted, &p.muted),
+        (&mut theme.line, &p.line),
+        (&mut theme.accent, &p.accent),
+    ] {
+        if let Some(hex) = value {
+            *slot = parse_hex(hex)?;
+        }
+    }
+    Ok(())
+}
+
+/// `#rrggbb` (or `#rgb`) to a diagram-scene colour.
+fn parse_hex(s: &str) -> Result<diagram_scene::theme::Color> {
+    let h = s
+        .strip_prefix('#')
+        .ok_or_else(|| anyhow!("colour {s:?} must start with #"))?;
+    let h: String = match h.len() {
+        3 => h.chars().flat_map(|c| [c, c]).collect(),
+        6 => h.to_string(),
+        _ => bail!("colour {s:?} must be #rgb or #rrggbb"),
+    };
+    let byte = |i: usize| {
+        u8::from_str_radix(&h[i..i + 2], 16).map_err(|_| anyhow!("colour {s:?} isn't hex"))
+    };
+    Ok(diagram_scene::theme::Color(byte(0)?, byte(2)?, byte(4)?))
+}
+
 /// Prefix every `id="…"` in an SVG and every reference to it (`url(#…)`,
 /// `href="#…"`, `xlink:href="#…"`), so several inline SVGs can share a page.
 pub fn prefix_ids(svg: &str, prefix: &str) -> String {
@@ -218,6 +265,43 @@ mod tests {
 
     fn diagrams() -> Diagrams {
         Diagrams::new(Path::new(".")).unwrap()
+    }
+
+    #[test]
+    fn palette_overrides_reach_the_svg() {
+        let light = crate::config::DiagramPalette {
+            line: Some("#2b6cb0".into()),
+            background: Some("#f2f5f7".into()),
+            ..Default::default()
+        };
+        let dark = crate::config::DiagramPalette {
+            line: Some("#7fb3ff".into()),
+            ..Default::default()
+        };
+        let d = diagrams().with_palettes(&light, &dark).unwrap();
+        let html = d
+            .render(Lang::Mermaid, "flowchart LR\n  A --> B\n", "", "t")
+            .unwrap();
+        assert!(
+            html.contains("#2b6cb0") && html.contains("#f2f5f7"),
+            "{html}"
+        );
+        assert!(html.contains("#7fb3ff"), "{html}");
+    }
+
+    #[test]
+    fn hex_colours() {
+        assert_eq!(
+            parse_hex("#abc").unwrap(),
+            diagram_scene::theme::Color(0xaa, 0xbb, 0xcc)
+        );
+        assert_eq!(
+            parse_hex("#1a1d24").unwrap(),
+            diagram_scene::theme::Color(0x1a, 0x1d, 0x24)
+        );
+        assert!(parse_hex("1a1d24").is_err());
+        assert!(parse_hex("#12345").is_err());
+        assert!(parse_hex("#zzzzzz").is_err());
     }
 
     #[test]

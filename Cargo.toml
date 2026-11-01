@@ -25,7 +25,8 @@ mmd = { git = "https://github.com/grahambrooks/mmd", tag = "v2026.10.25" }
 puml = { git = "https://github.com/grahambrooks/puml", tag = "v2026.10.31" }
 forge-dsl = { git = "https://github.com/grahambrooks/forge", tag = "v2026.10.25", default-features = false }
 diagram-scene = { git = "https://github.com/grahambrooks/diagram-scene", tag = "v2026.10.25" }
-adoc = { git = "https://github.com/grahambrooks/adoc", tag = "v2026.11.1" }
+# Pinned by revision for image attribute lists and multi-line inline formatting (0cbfb01), unreleased.
+adoc = { git = "https://github.com/grahambrooks/adoc", rev = "0cbfb01" }
 camino = "1"
 # Pure-Rust regex engine (fancy-regex); the default onig engine is C.
 syntect = { version = "5", default-features = false, features = ["default-fancy"] }
