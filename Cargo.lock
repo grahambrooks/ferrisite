@@ -36,7 +36,7 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 [[package]]
 name = "adoc"
 version = "2026.11.1"
-source = "git+https://github.com/grahambrooks/adoc?rev=0cbfb01#0cbfb01137c85ca54938beea680f25527b81649d"
+source = "git+https://github.com/grahambrooks/adoc?tag=v2026.11.2#0cbfb01137c85ca54938beea680f25527b81649d"
 dependencies = [
  "camino",
  "clap",
