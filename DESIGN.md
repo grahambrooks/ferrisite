@@ -11,6 +11,32 @@ revision until they're released. Highlighted code uses Hugo/Chroma's markup
 (`div.highlight > pre.chroma > code[data-lang]`) so the theme's code
 decorations apply. Next: M5, switching the deploy to ferrisite.
 
+**Performance and structure, 2026-11-01:** a build of grahambrooks.com takes
+0.86–1.24 s from empty and 0.25 s when rebuilding into the same directory with
+nothing changed (release; social cards were three-quarters of the CPU).
+
+- Output is written in place: a file is rewritten only when its contents
+  change (written beside and renamed over, so a reader never sees half of
+  it), and files the build no longer produces are removed afterwards, along
+  with emptied directories. The output directory is never deleted wholesale.
+- Social cards are cached by a hash of their SVG in `.ferrisite-cards` in the
+  output directory; only the Libertinus Serif faces are loaded.
+- Templates render in parallel; pages and static files are written in
+  parallel. Dependencies build at `opt-level = 3` in the dev profile, so a
+  debug `serve` rebuilds in about a second (it took 16 s).
+- `serve` skips social cards, watches every file under the site root except
+  dot-files, the output directory, `public/`, `resources/`, `node_modules/`
+  and `target/` (AsciiDoc includes, PlantUML skins and forge imports resolve
+  inside those libraries, so ferrisite can't list them), and injects a script
+  that reloads open pages after a rebuild.
+- One HTML tokenizer (`html`) serves every pass over rendered HTML: the
+  render-hook equivalents (one pass), diagram id prefixing, and link
+  checking. Link checking lives in `links`, used by `check` and `parity`;
+  nothing depends on `parity`, so it can be deleted after M5.
+- Memory peaks at about 290 MB without cards. About 140 MB of that is
+  syntect's compiled regexes for the grammars the site uses (Scala 22 MB, Lisp
+  18 MB, C++ 15 MB, …); every page's fields together are about 2 MB.
+
 **Template port (section 8), 2026-10-31:** grahambrooks.com's Hugo layouts
 and the Compose theme partials they use are minijinja templates in the site's
 `templates/`. The theme's compiled CSS and fingerprinted JS are vendored
@@ -214,9 +240,9 @@ files ─discover→ Source[] ─parse→ Page[] ─resolve→ Site ─render→
 | discover | `content::discover` | site root → `Source { path, kind, raw }` | Walks `content/`, `static/`. Sorted, for determinism. |
 | parse | `content::frontmatter` | `Source` → `Page { meta, body, kind }` | YAML (`---`) and TOML (`+++`). Unknown keys kept in `params`. |
 | resolve | `site` | `Page[]` → `Site` | Sections, taxonomies (with term files), URLs, aliases, pagination, summaries, `ref` targets, prev/next, series order. All cross-page facts are computed here, never during rendering. |
-| render | `markup`, `render` | `Site` → `Output[]` | Markup to HTML fragments, then minijinja templates. Pages render in parallel (rayon); output is collected and sorted by path. |
-| emit | `output` | `Output[]` → files | Feeds, sitemap, robots, search index, agent files (section 9), alias stubs, social cards, static copy. |
-| verify | `check` | `public/` → report | Internal link check, unresolved anchors; optional double build. |
+| render | `markup`, `render` | `Site` → `Output[]` | Markup to HTML fragments, then minijinja templates. Both run in parallel (rayon); output is collected and sorted by path. |
+| emit | `output`, `build` | `Output[]` → files | Feeds, sitemap, robots, search index, agent files (section 9), alias stubs, social cards, static copy. Written in place: unchanged files aren't touched, stale ones are removed. |
+| verify | `check`, `links` | `public/` → report | Internal link check, unresolved anchors; optional double build. |
 
 ## 6. Markup
 
@@ -423,7 +449,9 @@ name. They're drawn as an SVG template and rasterised with `resvg` (aligned to
 `puml`'s version). Text is laid out with `rustybuzz` measurement, the same
 approach as `md2pdf`, so wrapping is exact and margins are symmetric. The font
 file is OFL-licensed and committed in the site repo. Output is deterministic
-PNG.
+PNG. Cards are cached by an FNV-1a hash of their SVG (`.ferrisite-cards` in
+the output directory), so a rebuild re-renders only cards whose drawing
+changed; `serve` doesn't render them.
 
 ## 11. Parity harness (`ferrisite parity <reference> <candidate>`)
 
