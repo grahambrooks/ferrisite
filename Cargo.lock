@@ -35,8 +35,8 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "adoc"
-version = "2026.10.1"
-source = "git+https://github.com/grahambrooks/adoc?rev=4ceaddb#4ceaddbdceb941b76bcea63c6aea3ee2a56b955f"
+version = "2026.11.1"
+source = "git+https://github.com/grahambrooks/adoc?tag=v2026.11.1#aca6c0e5bacf25c54ca41865c2b75a452ac354a2"
 dependencies = [
  "camino",
  "clap",
@@ -1448,7 +1448,7 @@ dependencies = [
 [[package]]
 name = "puml"
 version = "2026.10.25"
-source = "git+https://github.com/grahambrooks/puml?rev=4f68789#4f6878951b6b28a1cc6f1f5d94e2afe4fbbaeeab"
+source = "git+https://github.com/grahambrooks/puml?tag=v2026.10.31#4f6878951b6b28a1cc6f1f5d94e2afe4fbbaeeab"
 dependencies = [
  "anyhow",
  "clap",
