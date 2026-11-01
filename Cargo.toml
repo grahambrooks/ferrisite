@@ -35,3 +35,8 @@ ttf-parser = "0.25"
 
 [dev-dependencies]
 tempfile = "3.27.0"
+
+# Dependencies (resvg, png, comrak, syntect, fancy-regex) run near release
+# speed in debug builds, so `cargo run -- serve` rebuilds in about a second.
+[profile.dev.package."*"]
+opt-level = 3
