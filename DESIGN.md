@@ -16,6 +16,23 @@ revision until they're released. Highlighted code uses Hugo/Chroma's markup
 (`div.highlight > pre.chroma > code[data-lang]`) so the theme's code
 decorations apply. Next: M5, switching the deploy to ferrisite.
 
+**Accessibility, 2026-11-01:** a Lighthouse audit of grahambrooks.com led to
+three features; with the site's template and CSS fixes, the audited pages
+score 100 for accessibility, best practices, SEO and agentic browsing.
+
+- `[markup.highlight_contrast]` (`min`, `light_background`,
+  `dark_background`): any syntax colour below `min` (WCAG ratio; 4.5 is AA)
+  against its mode's code background is mixed toward black or white by the
+  least amount that reaches it. InspiredGitHub and base16-ocean.dark both had
+  colours near 2.6:1 and 3.5:1.
+- Diagrams are named for assistive technology and agents: `role="img"` and an
+  `aria-label` from the drawn title, else "Mermaid diagram", "PlantUML
+  diagram" or "forge view <key>", unless the scene already carries an
+  accessible `<title>` (e.g. Mermaid's `accTitle`).
+- `[[bundles]]` (`output`, `inputs`): files joined in order under a
+  content-hashed name, linked from templates with `bundle("css/site.css")`.
+  The site's seven render-blocking stylesheets became one.
+
 **Performance and structure, 2026-11-01:** a build of grahambrooks.com takes
 0.86–1.24 s from empty and 0.25 s when rebuilding into the same directory with
 nothing changed (release; social cards were three-quarters of the CPU).

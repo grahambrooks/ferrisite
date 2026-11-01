@@ -79,7 +79,7 @@ impl Diagrams {
         let copies: Vec<(String, String)> = match lang {
             Lang::Mermaid => {
                 let scene = mmd::scene(source, &self.fonts).map_err(|e| anyhow!("{e}"))?;
-                vec![self.paint(&scene, true)]
+                vec![self.paint(&scene, true, "Mermaid diagram")]
             }
             Lang::PlantUml => self.plantuml(source)?,
             Lang::Forge => self.forge(source, args)?,
@@ -98,7 +98,21 @@ impl Diagrams {
 
     /// Paint a scene in both palettes. `bundled_font` names mmd's font, which
     /// is what the scene was measured with.
-    fn paint(&self, scene: &Scene, bundled_font: bool) -> (String, String) {
+    ///
+    /// Both copies get an accessible name: the scene's own accessible title
+    /// when it has one (diagram-scene writes it as `<title>`), else its drawn
+    /// title, else `fallback` ("Mermaid diagram").
+    fn paint(&self, scene: &Scene, bundled_font: bool, fallback: &str) -> (String, String) {
+        let drawn: Option<String> = scene.title.as_ref().map(|t| {
+            t.line
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>()
+        });
+        let label = drawn
+            .filter(|t| !t.trim().is_empty())
+            .unwrap_or_else(|| fallback.to_string());
         let theme = |base: Theme| {
             if bundled_font {
                 Theme {
@@ -110,8 +124,14 @@ impl Diagrams {
             }
         };
         (
-            diagram_scene::svg::to_svg(scene, &theme(self.light.clone())),
-            diagram_scene::svg::to_svg(scene, &theme(self.dark.clone())),
+            label_svg(
+                &diagram_scene::svg::to_svg(scene, &theme(self.light.clone())),
+                &label,
+            ),
+            label_svg(
+                &diagram_scene::svg::to_svg(scene, &theme(self.dark.clone())),
+                &label,
+            ),
         )
     }
 
@@ -133,12 +153,13 @@ impl Diagrams {
             .map(|d| {
                 let ast = puml::parser::parse(d).map_err(|e| anyhow!("{e}"))?;
                 Ok(match puml::scene::scene(&ast) {
-                    Some(scene) => self.paint(&scene, false),
+                    Some(scene) => self.paint(&scene, false, "PlantUML diagram"),
                     // Use case, timing, mind map and Gantt diagrams have no
                     // scene yet: puml's own SVG, in its light palette, serves
                     // both modes.
                     None => {
-                        let svg = puml::render::render(&ast).to_string();
+                        let svg =
+                            label_svg(&puml::render::render(&ast).to_string(), "PlantUML diagram");
                         (svg.clone(), svg)
                     }
                 })
@@ -173,7 +194,7 @@ impl Diagrams {
             .map(|k| {
                 let scene = forge_dsl::scene(&model, k, &self.fonts)
                     .with_context(|| format!("view {k:?} could not be laid out"))?;
-                Ok(self.paint(&scene, true))
+                Ok(self.paint(&scene, true, &format!("forge view {k}")))
             })
             .collect()
     }
@@ -209,6 +230,32 @@ fn parse_hex(s: &str) -> Result<diagram_scene::theme::Color> {
         u8::from_str_radix(&h[i..i + 2], 16).map_err(|_| anyhow!("colour {s:?} isn't hex"))
     };
     Ok(diagram_scene::theme::Color(byte(0)?, byte(2)?, byte(4)?))
+}
+
+/// Give an SVG an accessible name: `role="img"` and `aria-label` on its root
+/// element, unless it already has a `<title>` as its first child (which
+/// names it) or an `aria-label`.
+pub fn label_svg(svg: &str, label: &str) -> String {
+    let Some(start) = svg.find("<svg") else {
+        return svg.to_string();
+    };
+    let Some(end) = svg[start..].find('>').map(|e| start + e) else {
+        return svg.to_string();
+    };
+    let tag = &svg[start..end];
+    let named = tag.contains("aria-label=") || svg[end + 1..].trim_start().starts_with("<title");
+    if named {
+        return svg.to_string();
+    }
+    let label = crate::markup::highlight::escape(label);
+    let role = if tag.contains("role=") {
+        ""
+    } else {
+        " role=\"img\""
+    };
+    let self_closing = tag.ends_with('/');
+    let at = if self_closing { end - 1 } else { end };
+    format!("{}{role} aria-label=\"{label}\"{}", &svg[..at], &svg[at..])
 }
 
 /// Prefix every element id in an SVG and every reference to one (`href`
@@ -402,5 +449,38 @@ mod tests {
             out,
             r##"<svg><style>.a{fill:url(#p-g)}</style><linearGradient id="p-g"/><rect style="fill:url(#p-g)"/><use xlink:href="#p-g"/><text>url(#g) id="g"</text></svg>"##
         );
+    }
+
+    #[test]
+    fn diagrams_get_an_accessible_name() {
+        let html = diagrams()
+            .render(Lang::Mermaid, "flowchart LR\n  A --> B\n", "", "d0")
+            .unwrap();
+        assert_eq!(
+            html.matches("aria-label=\"Mermaid diagram\"").count(),
+            2,
+            "{html}"
+        );
+        // A diagram that names itself keeps its own name.
+        let named = diagrams()
+            .render(
+                Lang::Mermaid,
+                "flowchart LR\n  accTitle: Order flow\n  A --> B\n",
+                "",
+                "d1",
+            )
+            .unwrap();
+        assert!(named.contains("<title>Order flow</title>"), "{named}");
+        assert!(!named.contains("aria-label=\"Mermaid diagram\""), "{named}");
+    }
+
+    #[test]
+    fn label_svg_adds_role_and_label_once() {
+        assert_eq!(
+            label_svg("<svg width=\"1\"><g/></svg>", "A & B"),
+            "<svg width=\"1\" role=\"img\" aria-label=\"A &amp; B\"><g/></svg>"
+        );
+        let titled = "<svg role=\"img\"><title>T</title></svg>";
+        assert_eq!(label_svg(titled, "x"), titled);
     }
 }

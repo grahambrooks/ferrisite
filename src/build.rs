@@ -54,7 +54,9 @@ pub fn build(opts: &Options) -> Result<Report> {
         future: opts.future,
         now: now()?,
     };
-    let renderer = Renderer::new(&config, &opts.root.join("templates"))?;
+    let (bundle_files, bundle_paths) = bundles(&config, &opts.root)?;
+    let mut renderer = Renderer::new(&config, &opts.root.join("templates"))?;
+    renderer.add_bundles(&config.base_url, bundle_paths);
     let diagrams = Diagrams::new(&opts.root.join(&config.markup.include_base))?
         .with_palettes(&config.markup.diagram_light, &config.markup.diagram_dark)?;
     let stylesheet = OutputFile {
@@ -63,7 +65,8 @@ pub fn build(opts: &Options) -> Result<Report> {
             "{}\n{}",
             crate::markup::highlight::css(
                 &config.markup.highlight_light,
-                &config.markup.highlight_dark
+                &config.markup.highlight_dark,
+                config.markup.highlight_contrast.as_ref(),
             )?,
             crate::diagrams::css()
         ),
@@ -73,6 +76,7 @@ pub fn build(opts: &Options) -> Result<Report> {
     files.extend(output::all(&site));
     files.extend(crate::agents::all(&site));
     files.push(stylesheet);
+    files.extend(bundle_files);
     files.sort_by(|a, b| a.path.cmp(&b.path));
     if let Some(w) = files.windows(2).find(|w| w[0].path == w[1].path) {
         bail!("two outputs claim {}", w[0].path);
@@ -328,6 +332,45 @@ fn write_cards(
     let cache: String = written.iter().map(|(p, h)| format!("{h} {p}\n")).collect();
     write_if_changed(&out.join(CARD_CACHE), cache.as_bytes())?;
     Ok(written.into_iter().map(|(p, _)| p).collect())
+}
+
+/// `[[bundles]]`: each output's concatenated contents, written under a
+/// fingerprinted name, and the map from configured to fingerprinted path that
+/// the `bundle()` template function reads.
+fn bundles(config: &Config, root: &Path) -> Result<(Vec<OutputFile>, BTreeMap<String, String>)> {
+    let mut files = Vec::new();
+    let mut paths = BTreeMap::new();
+    for b in &config.bundles {
+        let output = b.output.trim_start_matches('/');
+        if b.inputs.is_empty() {
+            bail!("bundle {output} has no inputs");
+        }
+        let mut contents = String::new();
+        for input in &b.inputs {
+            let path = root.join(input);
+            let text = std::fs::read_to_string(&path)
+                .with_context(|| format!("bundle {output}: reading {}", path.display()))?;
+            contents.push_str(&format!("/* {input} */\n"));
+            contents.push_str(text.trim_end());
+            contents.push('\n');
+        }
+        let hash = format!("{:016x}", fnv1a(contents.as_bytes()));
+        let fingerprinted = match output.rsplit_once('.') {
+            Some((stem, ext)) if !stem.ends_with('/') => format!("{stem}.{hash}.{ext}"),
+            _ => format!("{output}.{hash}"),
+        };
+        if paths
+            .insert(output.to_string(), fingerprinted.clone())
+            .is_some()
+        {
+            bail!("two bundles write {output}");
+        }
+        files.push(OutputFile {
+            path: fingerprinted,
+            contents,
+        });
+    }
+    Ok((files, paths))
 }
 
 /// FNV-1a: a hash that is the same on every platform and toolchain, unlike

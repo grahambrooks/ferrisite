@@ -213,6 +213,21 @@ impl Renderer {
         })
     }
 
+    /// Register `bundle(path)`: the URL of a `[[bundles]]` output under its
+    /// fingerprinted name. An unknown path is a template error.
+    pub fn add_bundles(&mut self, base_url: &str, paths: BTreeMap<String, String>) {
+        let base = base_url.to_string();
+        self.env.add_function("bundle", move |path: String| {
+            let key = path.trim_start_matches('/');
+            paths.get(key).map(|p| format!("{base}{p}")).ok_or_else(|| {
+                minijinja::Error::new(
+                    minijinja::ErrorKind::InvalidOperation,
+                    format!("no [[bundles]] output {path:?} in ferrisite.toml"),
+                )
+            })
+        });
+    }
+
     /// Render `shortcodes/<name>.html`, or `None` if the site has no such
     /// template. Context: `args`, `inner` (already safe HTML/text), `page`
     /// (the calling page, as a brief), `lists` (section name → list items),

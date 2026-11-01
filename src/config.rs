@@ -52,6 +52,11 @@ pub struct Config {
     /// Agent-readable output (DESIGN.md section 9).
     #[serde(default)]
     pub agents: AgentsConfig,
+    /// Files concatenated into one fingerprinted output each (e.g. a site's
+    /// stylesheets, to save render-blocking requests). Templates link one
+    /// with `bundle("css/site.css")`.
+    #[serde(default)]
+    pub bundles: Vec<BundleConfig>,
     /// Per-taxonomy options, keyed by taxonomy name.
     #[serde(default)]
     pub taxonomy_options: BTreeMap<String, TaxonomyOptions>,
@@ -135,12 +140,46 @@ pub struct MarkupConfig {
     pub highlight_light: String,
     #[serde(default = "default_dark_theme")]
     pub highlight_dark: String,
+    /// Raise syntax colours to a minimum contrast against each mode's code
+    /// background (unset: the themes' colours as they are).
+    #[serde(default)]
+    pub highlight_contrast: Option<HighlightContrast>,
     /// Colours for build-time diagrams in light and dark mode, over
     /// diagram-scene's defaults (e.g. to match the site's palette).
     #[serde(default)]
     pub diagram_light: DiagramPalette,
     #[serde(default)]
     pub diagram_dark: DiagramPalette,
+}
+
+/// `[[bundles]]`: `inputs` (paths relative to the site root) are joined in
+/// order and written to `output` with a content hash before the extension
+/// (`css/site.css` → `css/site.1a2b3c4d5e6f7a8b.css`), so the URL changes
+/// whenever the content does and the file can be cached indefinitely. Put the
+/// output in the same directory the inputs are served from, so relative
+/// `url()`s in them still resolve.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BundleConfig {
+    pub output: String,
+    pub inputs: Vec<String>,
+}
+
+/// `[markup.highlight_contrast]`: every syntax colour that falls below `min`
+/// (a WCAG contrast ratio; 4.5 is level AA for body text) against the code
+/// background of its mode is mixed toward black (light) or white (dark), by
+/// the least amount that reaches it. Colours that already pass are untouched.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HighlightContrast {
+    #[serde(default = "default_min_contrast")]
+    pub min: f64,
+    pub light_background: String,
+    pub dark_background: String,
+}
+
+fn default_min_contrast() -> f64 {
+    4.5
 }
 
 /// Overrides for diagram-scene's theme roles, each a `#rrggbb` colour.
@@ -168,6 +207,7 @@ impl Default for MarkupConfig {
             stylesheet: default_stylesheet(),
             highlight_light: default_light_theme(),
             highlight_dark: default_dark_theme(),
+            highlight_contrast: None,
             diagram_light: DiagramPalette::default(),
             diagram_dark: DiagramPalette::default(),
         }

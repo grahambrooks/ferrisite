@@ -604,3 +604,54 @@ fn outputs_differing_only_in_case_build_on_any_disk() {
         .expect("build");
     }
 }
+
+#[test]
+fn bundles_join_inputs_under_a_fingerprinted_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("site");
+    for d in ["content/post", "static/css", "templates"] {
+        std::fs::create_dir_all(root.join(d)).unwrap();
+    }
+    std::fs::write(
+        root.join("ferrisite.toml"),
+        "base_url = \"https://e.test/\"\ntitle = \"T\"\n\n[[bundles]]\noutput = \"css/site.css\"\ninputs = [\"static/css/b.css\", \"static/css/a.css\"]\n",
+    )
+    .unwrap();
+    std::fs::write(root.join("static/css/a.css"), "a{color:red}\n").unwrap();
+    std::fs::write(root.join("static/css/b.css"), "b{color:blue}\n").unwrap();
+    std::fs::write(
+        root.join("templates/single.html"),
+        "{{ bundle(\"css/site.css\") }}",
+    )
+    .unwrap();
+    std::fs::write(root.join("content/post/p.md"), "---\ntitle: P\n---\nbody\n").unwrap();
+    let out = dir.path().join("out");
+    build(&Options {
+        root: root.clone(),
+        out: out.clone(),
+        drafts: false,
+        future: false,
+        base_url: None,
+        cards: false,
+    })
+    .expect("build");
+    let url = read(&out, "post/p/index.html");
+    let path = url
+        .trim()
+        .strip_prefix("https://e.test/")
+        .expect(&url)
+        .to_string();
+    assert!(
+        path.starts_with("css/site.")
+            && path.ends_with(".css")
+            && path.len() == "css/site.".len() + 16 + 4,
+        "{path}"
+    );
+    let css = read(&out, &path);
+    assert!(
+        css.find("b{color:blue}").unwrap() < css.find("a{color:red}").unwrap(),
+        "inputs keep their order: {css}"
+    );
+    // The inputs are still served on their own too.
+    assert!(out.join("css/a.css").exists());
+}
