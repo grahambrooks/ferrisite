@@ -571,3 +571,36 @@ fn a_directory_where_a_file_now_goes_is_replaced() {
     build_into(&out, false);
     assert!(out.join("robots.txt").is_file());
 }
+
+#[test]
+fn outputs_differing_only_in_case_build_on_any_disk() {
+    // Two alias stubs whose paths differ only in case share a file on a
+    // case-insensitive disk (macOS); parallel writes must not race.
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("site");
+    std::fs::create_dir_all(root.join("content/post")).unwrap();
+    std::fs::write(
+        root.join("ferrisite.toml"),
+        "base_url = \"https://e.test\"\ntitle = \"T\"\n",
+    )
+    .unwrap();
+    let aliases: String = (0..40)
+        .map(|i| format!("- /old/Alias{i}/\n- /old/alias{i}/\n"))
+        .collect();
+    std::fs::write(
+        root.join("content/post/a.md"),
+        format!("---\ntitle: A\naliases:\n{aliases}---\nbody\n"),
+    )
+    .unwrap();
+    for _ in 0..5 {
+        build(&Options {
+            root: root.clone(),
+            out: dir.path().join("out"),
+            drafts: false,
+            future: false,
+            base_url: None,
+            cards: true,
+        })
+        .expect("build");
+    }
+}

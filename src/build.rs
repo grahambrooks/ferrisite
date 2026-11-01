@@ -195,8 +195,18 @@ fn write_if_changed(path: &Path, contents: &[u8]) -> Result<()> {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("creating {}", parent.display()))?;
     }
+    // A temp name unique to this write: on a case-insensitive disk two
+    // outputs that differ only in case (alias stubs such as /tags/Design/
+    // and /tags/design/) are one file, and parallel writers sharing a temp
+    // name would rename it out from under each other.
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let name = path.file_name().context("output path has no file name")?;
-    let tmp = parent.join(format!(".{}.ferrisite-tmp", name.to_string_lossy()));
+    let tmp = parent.join(format!(
+        ".{}.{}-{n}.ferrisite-tmp",
+        name.to_string_lossy(),
+        std::process::id()
+    ));
     std::fs::write(&tmp, contents).with_context(|| format!("writing {}", path.display()))?;
     std::fs::rename(&tmp, path).with_context(|| format!("writing {}", path.display()))?;
     Ok(())
