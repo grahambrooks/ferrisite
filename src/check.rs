@@ -4,7 +4,7 @@
 //! every HTML page has a Markdown copy and a `rel="alternate"` link to it,
 //! and `/llms.txt` has the spec's structure with every link resolving.
 
-use crate::parity;
+use crate::links;
 use anyhow::Result;
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -30,9 +30,9 @@ pub fn run(
     agents: bool,
     known: &[crate::config::KnownBroken],
 ) -> Result<Report> {
-    let files = parity::list_files(out)?;
+    let files = links::list_files(out)?;
     let mut report = Report::default();
-    for b in parity::broken_links(out, &files, base_url, &mut report.links_checked)? {
+    for b in links::broken_links(out, &files, base_url, &mut report.links_checked)? {
         let target = b.split_once(" → ").map(|(_, t)| t).unwrap_or(&b);
         let target = target.trim_end_matches(" (no such id)");
         match known.iter().find(|k| k.link == target) {
@@ -62,7 +62,7 @@ fn agent_problems(out: &Path, files: &[String], base_url: &str) -> Result<Vec<St
         .filter(|f| generated.as_ref().is_none_or(|g| g.contains(*f)))
     {
         let html = std::fs::read_to_string(out.join(f))?;
-        if parity::alias_target(&html).is_some() {
+        if links::alias_target(&html).is_some() {
             continue;
         }
         let dir = &f[..f.len() - "index.html".len()];
