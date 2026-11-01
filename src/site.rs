@@ -125,9 +125,16 @@ pub struct Site {
     /// Per entry: the previous (older) and next (newer) page in date order
     /// within the list the page belongs to (see `neighbours`).
     pub neighbours: Vec<(Option<usize>, Option<usize>)>,
+    /// Entry index by URL.
+    by_url: HashMap<String, usize>,
 }
 
 impl Site {
+    /// The entry whose URL is `url`.
+    pub fn entry(&self, url: &str) -> Option<&Entry> {
+        self.by_url.get(url).map(|&i| &self.entries[i])
+    }
+
     /// `items` in Hugo's `.ByDate` order: oldest first, by date to the
     /// second, keeping the input order for equal dates (a stable sort, as
     /// Hugo's). `.ByDate.Reverse` is this list reversed.
@@ -350,7 +357,13 @@ pub fn resolve(
     let home = entries.iter().position(|e| e.page.kind == Kind::Home);
     let aliases = collect_aliases(&entries, &sections, &taxonomies)?;
     let neighbours = neighbours(&entries, &sections);
+    let by_url = entries
+        .iter()
+        .enumerate()
+        .map(|(i, e)| (e.page.url.clone(), i))
+        .collect();
     Ok(Site {
+        by_url,
         config,
         entries,
         home,

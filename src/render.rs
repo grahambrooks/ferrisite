@@ -15,6 +15,7 @@ use crate::site::{Brief, Entry, Pager, Section, Site, Taxonomy, Term};
 
 use anyhow::{Context, Result};
 use minijinja::{Environment, Value, context};
+use rayon::prelude::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -263,60 +264,82 @@ impl Renderer {
         }
     }
 
+    /// Every page, list, taxonomy and term page, rendered in parallel, then
+    /// the home, 404 and robots.txt pages.
     pub fn render_site(&self, site: &Site) -> Result<Vec<OutputFile>> {
         let site_ctx = ser(&self.site);
-        let mut out = Vec::new();
-        for entry in &site.entries {
-            let template = match (entry.page.kind, entry.page.section.as_str()) {
-                (Kind::Page, "") => vec!["page.html".to_string()],
-                (Kind::Page, section) => {
-                    vec![format!("{section}/single.html"), "single.html".to_string()]
-                }
-                // Home, section, taxonomy and term pages render with their lists below.
-                _ => continue,
-            };
-            let html = self
-                .render(
-                    &template,
-                    context! { site => site_ctx.clone(), current => self.current(site, &entry.page.url), page => ser(&page_ctx(site, entry, true)) },
-                )
-                .with_context(|| format!("rendering {}", entry.page.source))?;
-            out.push(OutputFile {
-                path: index_path(&entry.page.url),
-                contents: html,
-            });
-        }
-        for section in &site.sections {
-            let page = section
-                .index
-                .map(|i| page_ctx(site, &site.entries[i], true));
-            for pager in &section.pagers {
-                let html = self
-                    .render(
-                        &[
-                            format!("{}/list.html", section.name),
-                            "list.html".to_string(),
-                        ],
-                        context! {
-                            site => site_ctx.clone(), current => self.current(site, &pager.url),
-                            page => ser(&page),
-                            section => section_ctx(section),
-                            pager => ser(&pager_ctx(site, &section.pagers, pager)),
-                        },
+        let mut out: Vec<OutputFile> = site
+            .entries
+            .par_iter()
+            .filter_map(|entry| {
+                let template = match (entry.page.kind, entry.page.section.as_str()) {
+                    (Kind::Page, "") => vec!["page.html".to_string()],
+                    (Kind::Page, section) => {
+                        vec![format!("{section}/single.html"), "single.html".to_string()]
+                    }
+                    // Home, section, taxonomy and term pages render with their lists below.
+                    _ => return None,
+                };
+                Some(
+                    self.render(
+                        &template,
+                        context! { site => site_ctx.clone(), current => self.current(site, &entry.page.url), page => ser(&page_ctx(site, entry, true)) },
                     )
-                    .with_context(|| format!("rendering list {}", pager.url))?;
-                out.push(OutputFile {
-                    path: index_path(&pager.url),
-                    contents: html,
-                });
-            }
-        }
+                    .with_context(|| format!("rendering {}", entry.page.source))
+                    .map(|html| OutputFile {
+                        path: index_path(&entry.page.url),
+                        contents: html,
+                    }),
+                )
+            })
+            .collect::<Result<_>>()?;
+        let lists: Vec<Vec<OutputFile>> = site
+            .sections
+            .par_iter()
+            .map(|section| {
+                let page = section
+                    .index
+                    .map(|i| page_ctx(site, &site.entries[i], true));
+                section
+                    .pagers
+                    .iter()
+                    .map(|pager| {
+                        let html = self
+                            .render(
+                                &[
+                                    format!("{}/list.html", section.name),
+                                    "list.html".to_string(),
+                                ],
+                                context! {
+                                    site => site_ctx.clone(), current => self.current(site, &pager.url),
+                                    page => ser(&page),
+                                    section => section_ctx(section),
+                                    pager => ser(&pager_ctx(site, &section.pagers, pager)),
+                                },
+                            )
+                            .with_context(|| format!("rendering list {}", pager.url))?;
+                        Ok(OutputFile {
+                            path: index_path(&pager.url),
+                            contents: html,
+                        })
+                    })
+                    .collect()
+            })
+            .collect::<Result<_>>()?;
+        out.extend(lists.into_iter().flatten());
         for taxonomy in &site.taxonomies {
             out.push(self.render_taxonomy(site, taxonomy, &site_ctx)?);
-            for term in &taxonomy.terms {
-                out.extend(self.render_term(site, taxonomy, term, &site_ctx)?);
-            }
         }
+        let terms: Vec<(&Taxonomy, &Term)> = site
+            .taxonomies
+            .iter()
+            .flat_map(|t| t.terms.iter().map(move |term| (t, term)))
+            .collect();
+        let terms: Vec<Vec<OutputFile>> = terms
+            .par_iter()
+            .map(|(t, term)| self.render_term(site, t, term, &site_ctx))
+            .collect::<Result<_>>()?;
+        out.extend(terms.into_iter().flatten());
         let home = site.home.map(|i| page_ctx(site, &site.entries[i], true));
         let recent: Vec<PageCtx> = site
             .regular
@@ -530,7 +553,7 @@ fn describe<'a>(site: &'a Site, url: &str) -> Described<'a> {
             );
         }
     }
-    match site.entries.iter().find(|e| e.page.url == url) {
+    match site.entry(url) {
         Some(e) => Described {
             kind: "page",
             section: &e.page.section,
