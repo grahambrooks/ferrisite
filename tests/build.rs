@@ -17,6 +17,7 @@ fn build_into(out: &Path, drafts: bool) -> ferrisite::build::Report {
         drafts,
         future: false,
         base_url: None,
+        cards: true,
     })
     .expect("build")
 }
@@ -146,6 +147,7 @@ fn unknown_shortcode_fails_with_file_and_line() {
         drafts: false,
         future: false,
         base_url: None,
+        cards: true,
     })
     .err()
     .expect("unknown shortcode must fail");
@@ -214,6 +216,7 @@ fn refuses_to_clean_a_foreign_directory() {
         drafts: false,
         future: false,
         base_url: None,
+        cards: true,
     })
     .err()
     .expect("should refuse");
@@ -274,6 +277,7 @@ fn diagrams_highlighting_and_asciidoc() {
         drafts: false,
         future: false,
         base_url: None,
+        cards: true,
     })
     .expect("build");
     let md = read(&out, "post/md/index.html");
@@ -307,6 +311,7 @@ fn broken_diagram_fails_with_file_and_line() {
         drafts: false,
         future: false,
         base_url: None,
+        cards: true,
     })
     .err()
     .expect("an unsupported diagram must fail the build");
@@ -341,6 +346,7 @@ fn agent_readable_output_cards_and_check() {
         drafts: false,
         future: false,
         base_url: None,
+        cards: true,
     })
     .expect("build");
     let md = read(&out, "post/a/index.md");
@@ -481,6 +487,7 @@ fn template_context_terms_neighbours_toc_and_hooks() {
         drafts: false,
         future: false,
         base_url: None,
+        cards: true,
     })
     .expect("build");
 
@@ -517,4 +524,50 @@ fn template_context_terms_neighbours_toc_and_hooks() {
     let tags = read(&out, "tags/index.html");
     assert!(tags.starts_with("rust:1:0:A;"), "{tags}");
     assert_eq!(read(&out, "404.html"), "404|404 Page not found|4");
+}
+
+#[test]
+fn rebuilding_in_place_rewrites_only_changes_and_removes_stale_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("public");
+    build_into(&out, true);
+    assert!(out.join("post/draft/index.html").exists());
+    let index = out.join("post/post-1/index.html");
+    let before = std::fs::metadata(&index).unwrap().modified().unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(20));
+
+    build_into(&out, false);
+    assert!(
+        !out.join("post/draft").exists(),
+        "the draft's page and its now-empty directory go"
+    );
+    assert_eq!(
+        std::fs::metadata(&index).unwrap().modified().unwrap(),
+        before,
+        "an unchanged page isn't rewritten"
+    );
+
+    // The same output as a build into an empty directory.
+    let fresh = dir.path().join("fresh");
+    build_into(&fresh, false);
+    let (mut a, mut b) = (Vec::new(), Vec::new());
+    collect(&out, &out, &mut a);
+    collect(&fresh, &fresh, &mut b);
+    assert_eq!(
+        a.iter().map(|x| &x.0).collect::<Vec<_>>(),
+        b.iter().map(|x| &x.0).collect::<Vec<_>>()
+    );
+    assert_eq!(a, b);
+}
+
+#[test]
+fn a_directory_where_a_file_now_goes_is_replaced() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("public");
+    build_into(&out, false);
+    // A stale directory sits where robots.txt belongs.
+    std::fs::remove_file(out.join("robots.txt")).unwrap();
+    std::fs::create_dir_all(out.join("robots.txt/x")).unwrap();
+    build_into(&out, false);
+    assert!(out.join("robots.txt").is_file());
 }

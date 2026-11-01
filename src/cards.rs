@@ -38,17 +38,27 @@ pub fn card_path(url: &str) -> String {
 
 impl Cards {
     pub fn new(cfg: &CardsConfig, root: &Path) -> Result<Cards> {
+        // Only the Libertinus Serif faces: the card draws nothing else, and
+        // loading every bundled font copied ~20 MB per build.
+        let name_is = |f: &[u8], id: u16, want: &dyn Fn(&str) -> bool| {
+            ttf_parser::Face::parse(f, 0).is_ok_and(|face| {
+                face.names()
+                    .into_iter()
+                    .any(|n| n.name_id == id && n.to_string().is_some_and(|s| want(&s)))
+            })
+        };
+        // Prefix match: the semibold face (the title's weight 600) has the
+        // legacy family name "Libertinus Serif Semibold".
         let mut db = usvg::fontdb::Database::new();
-        for font in typst_assets::fonts() {
+        for font in typst_assets::fonts()
+            .filter(|f| name_is(f, ttf_parser::name_id::FAMILY, &|s| s.starts_with(FAMILY)))
+        {
             db.load_font_data(font.to_vec());
         }
         let measure_font = typst_assets::fonts()
             .find(|f| {
-                ttf_parser::Face::parse(f, 0).is_ok_and(|face| {
-                    face.names().into_iter().any(|n| {
-                        n.name_id == ttf_parser::name_id::FULL_NAME
-                            && n.to_string().as_deref() == Some("Libertinus Serif Regular")
-                    })
+                name_is(f, ttf_parser::name_id::FULL_NAME, &|s| {
+                    s == "Libertinus Serif Regular"
                 })
             })
             .context("bundled Libertinus Serif font not found")?;
@@ -82,8 +92,12 @@ impl Cards {
     /// The card as PNG bytes. `byline` is drawn under the divider, e.g.
     /// "Graham Brooks · 22 September 2026".
     pub fn render(&self, title: &str, byline: &str) -> Result<Vec<u8>> {
-        let svg = self.svg(title, byline);
-        let tree = usvg::Tree::from_str(&svg, &self.options).context("card SVG")?;
+        self.png(&self.svg(title, byline))
+    }
+
+    /// Rasterise a card drawn by [`Cards::svg`].
+    pub fn png(&self, svg: &str) -> Result<Vec<u8>> {
+        let tree = usvg::Tree::from_str(svg, &self.options).context("card SVG")?;
         let mut pixmap = tiny_skia::Pixmap::new(W as u32, H as u32).context("card pixmap")?;
         resvg::render(&tree, tiny_skia::Transform::default(), &mut pixmap.as_mut());
         pixmap.encode_png().context("card PNG")

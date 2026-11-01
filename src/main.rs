@@ -92,6 +92,7 @@ fn main() -> Result<()> {
                 drafts,
                 future,
                 base_url,
+                cards: true,
             })?;
             println!(
                 "Built {} pages, {} list pages, {} files (+{} static) into {} in {} ms",
