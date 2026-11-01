@@ -559,7 +559,7 @@ dependencies = [
 
 [[package]]
 name = "ferrisite"
-version = "2026.10.0"
+version = "2026.11.2"
 dependencies = [
  "adoc",
  "anyhow",
