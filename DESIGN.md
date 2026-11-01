@@ -1,5 +1,10 @@
 # ferrisite design
 
+**M5 done, 2026-11-01:** www.grahambrooks.com is built by ferrisite. The
+site's deploy workflow installs it pinned by commit, runs `check --agents`
+and a two-builds-identical check, and publishes; Hugo remains a manual
+fallback for one release.
+
 Status: **M4 done, 2026-10-31; M3's blocked criterion met.** ferrisite renders
 grahambrooks.com through ported templates; whole-page parity with the Hugo
 build passes (254 pages, 0 link differences, 9,672 links checked), `check
