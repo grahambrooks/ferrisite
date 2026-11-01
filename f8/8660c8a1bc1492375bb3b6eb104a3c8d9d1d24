@@ -1,0 +1,27 @@
+src/cards.rs
+  s_38439ae326f7ae::t_554ca0bb9d2988 41-51,53-55,60-61,95-100
+src/main.rs
+  s_38439ae326f7ae::t_2b4db055d18d17 95
+tests/build.rs
+  s_38439ae326f7ae::t_2135bc336643a1 20,150,219,280,314,349,490,528-573
+src/build.rs
+  s_38439ae326f7ae::t_71e42d687ff1ab 11-12,28-30,82-83,89,92-106,149-153,167-201,206-232,238-250,255-256,258,293-299,302-315,318-320,323-338,340-350,352,354-358
+src/serve.rs
+  s_38439ae326f7ae::t_344dcbe060dc9e 2-4,11,22,25,27,30-31,49-56,60-67,72-88,90-91,93-137,141-143,151-154,164-172,180,195-207,246-292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f88660c8a1bc1492375bb3b6eb104a3c8d9d1d24",
+  "prompts": {},
+  "sessions": {
+    "s_38439ae326f7ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e88d1d-b3bb-451e-9770-aa1214b3f499",
+        "model": "unknown"
+      },
+      "human_author": "Graham Brooks <graham@grahambrooks.com>"
+    }
+  }
+}
