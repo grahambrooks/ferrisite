@@ -92,51 +92,21 @@ pub(crate) fn url_of(file: &str) -> String {
     }
 }
 
-/// `html` with the contents of `<script>` elements removed (the tags, and
-/// so their `src`, stay): text in scripts isn't markup, even when it looks
-/// like an attribute, such as a JavaScript template literal building
-/// `<use href="#${id}">`.
-fn without_script_bodies(html: &str) -> std::borrow::Cow<'_, str> {
-    if !html.contains("<script") {
-        return std::borrow::Cow::Borrowed(html);
-    }
-    let mut out = String::with_capacity(html.len());
-    let mut rest = html;
-    while let Some(i) = rest.find("<script") {
-        let Some(open_end) = rest[i..].find('>').map(|e| i + e + 1) else {
-            break;
-        };
-        out.push_str(&rest[..open_end]);
-        rest = &rest[open_end..];
-        match rest.find("</script") {
-            Some(close) => rest = &rest[close..],
-            None => rest = "",
-        }
-    }
-    out.push_str(rest);
-    std::borrow::Cow::Owned(out)
-}
-
 /// Internal link targets in `html`, normalised to site-relative paths with
-/// fragments kept (`/post/x/#heading`). Script contents are skipped.
+/// fragments kept (`/post/x/#heading`): the `href` and `src` attributes of
+/// every tag (and `xlink:href`). Script contents and text aren't links.
 pub fn internal_links(html: &str, page_url: &str, base_url: &str) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
-    let html = without_script_bodies(html);
-    for attr in ["href=", "src="] {
-        let mut rest = &html[..];
-        while let Some(i) = rest.find(attr) {
-            let after = &rest[i + attr.len()..];
-            rest = after;
-            // Only real attributes: preceded by whitespace in the source.
-            let quote = match after.chars().next() {
-                Some(q @ ('"' | '\'')) => q,
-                _ => continue,
-            };
-            let Some(end) = after[1..].find(quote) else {
+    for token in crate::html::tokens(html) {
+        let crate::html::Token::Start(tag) = token else {
+            continue;
+        };
+        for a in &tag.attrs {
+            if !matches!(a.name.as_str(), "href" | "src" | "xlink:href") {
                 continue;
-            };
-            let raw = unescape(&after[1..1 + end]);
-            if let Some(link) = normalize(&raw, page_url, base_url) {
+            }
+            let Some(r) = a.value.clone() else { continue };
+            if let Some(link) = normalize(&unescape(&html[r]), page_url, base_url) {
                 out.insert(link);
             }
         }
@@ -239,16 +209,19 @@ fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
+/// Fragment targets in a page: every `id`, and `name` on `<a>`.
 fn element_ids(html: &str) -> BTreeSet<String> {
     let mut ids = BTreeSet::new();
-    for attr in [" id=\"", " name=\""] {
-        let mut rest = html;
-        while let Some(i) = rest.find(attr) {
-            let after = &rest[i + attr.len()..];
-            if let Some(end) = after.find('"') {
-                ids.insert(unescape(&after[..end]));
+    for token in crate::html::tokens(html) {
+        let crate::html::Token::Start(tag) = token else {
+            continue;
+        };
+        for a in &tag.attrs {
+            if (a.name == "id" || (a.name == "name" && tag.name == "a"))
+                && let Some(r) = a.value.clone()
+            {
+                ids.insert(unescape(&html[r]));
             }
-            rest = after;
         }
     }
     ids

@@ -211,35 +211,73 @@ fn parse_hex(s: &str) -> Result<diagram_scene::theme::Color> {
     Ok(diagram_scene::theme::Color(byte(0)?, byte(2)?, byte(4)?))
 }
 
-/// Prefix every `id="…"` in an SVG and every reference to it (`url(#…)`,
-/// `href="#…"`, `xlink:href="#…"`), so several inline SVGs can share a page.
+/// Prefix every element id in an SVG and every reference to one (`href`
+/// and `xlink:href` of `#id`, and `url(#id)` in attribute values and
+/// `<style>`), so several inline SVGs can share a page. Only attributes and
+/// style sheets are rewritten, never text.
 pub fn prefix_ids(svg: &str, prefix: &str) -> String {
-    let mut ids = Vec::new();
-    let mut rest = svg;
-    while let Some(i) = rest.find(" id=\"") {
-        let after = &rest[i + 5..];
-        if let Some(end) = after.find('"') {
-            ids.push(after[..end].to_string());
-        }
-        rest = after;
-    }
+    use crate::html::{Token, splice, tokens};
+    let ids: std::collections::HashSet<&str> = tokens(svg)
+        .filter_map(|t| match t {
+            Token::Start(tag) => tag.attr(svg, "id"),
+            _ => None,
+        })
+        .collect();
     if ids.is_empty() {
         return svg.to_string();
     }
-    // Longest first, so `arrow-end` isn't rewritten by a rule for `arrow`.
-    ids.sort_by_key(|id| std::cmp::Reverse(id.len()));
-    ids.dedup();
-    let mut out = svg.to_string();
-    for id in &ids {
-        for (from, to) in [
-            (format!(" id=\"{id}\""), format!(" id=\"{prefix}{id}\"")),
-            (format!("url(#{id})"), format!("url(#{prefix}{id})")),
-            (format!("href=\"#{id}\""), format!("href=\"#{prefix}{id}\"")),
-        ] {
-            out = out.replace(&from, &to);
+    let urls = |s: &str| -> Option<String> {
+        if !s.contains("url(#") {
+            return None;
+        }
+        let mut out = String::with_capacity(s.len());
+        let mut rest = s;
+        while let Some(i) = rest.find("url(#") {
+            out.push_str(&rest[..i + 5]);
+            rest = &rest[i + 5..];
+            if let Some(end) = rest.find(')')
+                && ids.contains(&rest[..end])
+            {
+                out.push_str(prefix);
+            }
+        }
+        out.push_str(rest);
+        (out != s).then_some(out)
+    };
+    let mut edits = Vec::new();
+    let mut in_style = false;
+    let base = svg.as_ptr() as usize;
+    for token in tokens(svg) {
+        match token {
+            Token::Start(tag) => {
+                in_style = tag.name == "style" && !tag.self_closing;
+                for a in &tag.attrs {
+                    let Some(r) = a.value.clone() else { continue };
+                    let v = &svg[r.clone()];
+                    let new = if a.name == "id" {
+                        Some(format!("{prefix}{v}"))
+                    } else if (a.name == "href" || a.name == "xlink:href")
+                        && v.strip_prefix('#').is_some_and(|id| ids.contains(id))
+                    {
+                        Some(format!("#{prefix}{}", &v[1..]))
+                    } else {
+                        urls(v)
+                    };
+                    if let Some(new) = new {
+                        edits.push((r, new));
+                    }
+                }
+            }
+            Token::Text(text) if in_style => {
+                if let Some(new) = urls(text) {
+                    let start = text.as_ptr() as usize - base;
+                    edits.push((start..start + text.len(), new));
+                }
+            }
+            _ => in_style = false,
         }
     }
-    out
+    splice(svg, &edits)
 }
 
 /// CSS that shows the diagram copy matching the page's mode. The site sets
@@ -354,5 +392,15 @@ mod tests {
         assert_eq!(Lang::from_name("Mermaid"), Some(Lang::Mermaid));
         assert_eq!(Lang::from_name("puml"), Some(Lang::PlantUml));
         assert_eq!(Lang::from_name("rust"), None);
+    }
+
+    #[test]
+    fn prefixing_rewrites_attributes_and_styles_but_not_text() {
+        let svg = r##"<svg><style>.a{fill:url(#g)}</style><linearGradient id="g"/><rect style="fill:url(#g)"/><use xlink:href="#g"/><text>url(#g) id="g"</text></svg>"##;
+        let out = prefix_ids(svg, "p-");
+        assert_eq!(
+            out,
+            r##"<svg><style>.a{fill:url(#p-g)}</style><linearGradient id="p-g"/><rect style="fill:url(#p-g)"/><use xlink:href="#p-g"/><text>url(#g) id="g"</text></svg>"##
+        );
     }
 }

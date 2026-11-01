@@ -8,6 +8,7 @@ pub mod config;
 pub mod content;
 pub mod diagrams;
 pub mod filters;
+pub mod html;
 pub mod links;
 pub mod markup;
 pub mod output;

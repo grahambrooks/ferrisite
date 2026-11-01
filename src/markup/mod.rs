@@ -300,76 +300,85 @@ pub struct Hooks {
 }
 
 impl Hooks {
+    /// One pass over the HTML: local SVG images written in Markdown are
+    /// inlined, and Markdown tables (comrak's attribute-less `<table>`) are
+    /// wrapped in the configured `<div>`.
     pub fn apply(&self, html: &str) -> anyhow::Result<String> {
-        let mut out = html.to_string();
-        if let Some(dir) = &self.inline_svg_from {
-            out = inline_svgs(&out, dir)?;
+        use crate::html::{Token, splice, tokens};
+        if self.inline_svg_from.is_none() && self.table_wrapper.is_none() {
+            return Ok(html.to_string());
         }
-        if let Some(class) = &self.table_wrapper {
-            out = out
-                .replace("<table>", &format!("<div class=\"{class}\">\n<table>"))
-                .replace("</table>", "</table>\n</div>");
+        let mut edits = Vec::new();
+        // Per open <table>: whether it was wrapped.
+        let mut tables: Vec<bool> = Vec::new();
+        for token in tokens(html) {
+            match token {
+                Token::Start(tag) if tag.name == "img" => {
+                    if let Some(dir) = &self.inline_svg_from
+                        && let Some(svg) = inline_svg(html, &tag, dir)?
+                    {
+                        edits.push((tag.span.clone(), svg));
+                    }
+                }
+                Token::Start(tag) if tag.name == "table" => {
+                    let wrap = self.table_wrapper.as_ref().filter(|_| tag.attrs.is_empty());
+                    if let Some(class) = wrap {
+                        edits.push((
+                            tag.span.clone(),
+                            format!("<div class=\"{class}\">\n<table>"),
+                        ));
+                    }
+                    tables.push(wrap.is_some());
+                }
+                // Pops every closing table; emits only for ones it wrapped.
+                Token::End { name, span } if name == "table" && tables.pop() == Some(true) => {
+                    edits.push((span, "</table>\n</div>".to_string()));
+                }
+                _ => {}
+            }
         }
-        Ok(out)
+        Ok(splice(html, &edits))
     }
 }
 
-/// Replace `<img src="/x.svg" alt="A" title="T" />` (comrak's output) for
-/// local SVGs with the file's contents in `<span class="inline-svg">`.
-fn inline_svgs(html: &str, dir: &std::path::Path) -> anyhow::Result<String> {
-    let mut out = String::with_capacity(html.len());
-    let mut rest = html;
-    while let Some(i) = rest.find("<img ") {
-        out.push_str(&rest[..i]);
-        let tag_end = rest[i..].find('>').map(|e| i + e + 1).unwrap_or(rest.len());
-        let tag = &rest[i..tag_end];
-        rest = &rest[tag_end..];
-        let attr = |name: &str| -> Option<String> {
-            let key = format!(" {name}=\"");
-            let s = tag.find(&key)? + key.len();
-            let e = tag[s..].find('"')?;
-            Some(tag[s..s + e].to_string())
-        };
-        // Only images written in Markdown, which comrak always renders as
-        // `<img src=".." alt=".." [title=".."] />`. Raw HTML `<img>` in the
-        // source is left alone, as Hugo's render hook never sees it.
-        let from_markdown = tag.ends_with(" />") && {
-            let names: Vec<&str> = tag[5..]
-                .split('"')
-                .step_by(2)
-                .map(|chunk| chunk.trim().trim_end_matches('=').trim())
-                .filter(|n| !n.is_empty() && *n != "/>" && *n != "/")
-                .collect();
-            names.iter().all(|n| matches!(*n, "src" | "alt" | "title"))
-        };
-        let Some(src) = attr("src").filter(|_| from_markdown) else {
-            out.push_str(tag);
-            continue;
-        };
-        let local_svg = src.to_ascii_lowercase().ends_with(".svg")
-            && !src.starts_with("http:")
-            && !src.starts_with("https:")
-            && !src.starts_with("//");
-        if !local_svg {
-            out.push_str(tag);
-            continue;
-        }
-        let path = dir.join(src.trim_start_matches('/'));
-        let svg = std::fs::read_to_string(&path)
-            .map_err(|e| anyhow::anyhow!("inline SVG {src}: {} ({e})", path.display()))?;
-        out.push_str("<span class=\"inline-svg\"");
-        if let Some(t) = attr("title").filter(|t| !t.is_empty()) {
-            out.push_str(&format!(" title=\"{t}\""));
-        }
-        if let Some(a) = attr("alt").filter(|a| !a.is_empty()) {
-            out.push_str(&format!(" aria-label=\"{a}\" role=\"img\""));
-        }
-        out.push('>');
-        out.push_str(&svg);
-        out.push_str("</span>");
+/// For an image written in Markdown whose `src` is a local `.svg`, the file's
+/// contents in `<span class="inline-svg">`. Comrak always renders Markdown
+/// images as `<img src=".." alt=".." [title=".."] />`; raw HTML `<img>` in
+/// the source is left alone, as Hugo's render hook never sees it.
+fn inline_svg(
+    html: &str,
+    tag: &crate::html::Tag,
+    dir: &std::path::Path,
+) -> anyhow::Result<Option<String>> {
+    let from_markdown = tag.raw.ends_with(" />")
+        && tag
+            .attrs
+            .iter()
+            .all(|a| a.value.is_some() && matches!(a.name.as_str(), "src" | "alt" | "title"));
+    let Some(src) = tag.attr(html, "src").filter(|_| from_markdown) else {
+        return Ok(None);
+    };
+    let local_svg = src.to_ascii_lowercase().ends_with(".svg")
+        && !src.starts_with("http:")
+        && !src.starts_with("https:")
+        && !src.starts_with("//");
+    if !local_svg {
+        return Ok(None);
     }
-    out.push_str(rest);
-    Ok(out)
+    let path = dir.join(src.trim_start_matches('/'));
+    let svg = std::fs::read_to_string(&path)
+        .map_err(|e| anyhow::anyhow!("inline SVG {src}: {} ({e})", path.display()))?;
+    let mut out = "<span class=\"inline-svg\"".to_string();
+    if let Some(t) = tag.attr(html, "title").filter(|t| !t.is_empty()) {
+        out.push_str(&format!(" title=\"{t}\""));
+    }
+    if let Some(a) = tag.attr(html, "alt").filter(|a| !a.is_empty()) {
+        out.push_str(&format!(" aria-label=\"{a}\" role=\"img\""));
+    }
+    out.push('>');
+    out.push_str(&svg);
+    out.push_str("</span>");
+    Ok(Some(out))
 }
 
 /// Hugo's `markdownify`: render Markdown, and drop the `<p>` wrapper when the
@@ -452,5 +461,22 @@ mod tests {
         assert!(r.html.contains("“q”"));
         assert!(r.html.contains("<a href=\"https://example.com\">"));
         assert!(r.html.contains("<div>raw</div>"));
+    }
+
+    #[test]
+    fn table_wrapper_wraps_only_markdown_tables_and_stays_balanced() {
+        let hooks = Hooks {
+            inline_svg_from: None,
+            table_wrapper: Some("tw".into()),
+        };
+        let html = "<table>\n<tr><td><table class=\"raw\"><tr><td>x</td></tr></table></td></tr>\n</table>\n<table class=\"raw\"></table>";
+        let out = hooks.apply(html).unwrap();
+        assert_eq!(out.matches("<div class=\"tw\">").count(), 1, "{out}");
+        assert_eq!(out.matches("</div>").count(), 1, "{out}");
+        assert!(out.starts_with("<div class=\"tw\">\n<table>"), "{out}");
+        assert!(
+            out.contains("</table>\n</div>\n<table class=\"raw\"></table>"),
+            "{out}"
+        );
     }
 }
