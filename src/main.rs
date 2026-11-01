@@ -19,7 +19,7 @@ enum Command {
         /// Site root (the directory holding ferrisite.toml).
         #[arg(long, default_value = ".")]
         root: PathBuf,
-        /// Output directory. Emptied first, but only if ferrisite created it.
+        /// Output directory. Updated in place (unchanged files untouched, stale ones removed); refuses a non-empty directory ferrisite didn't create.
         #[arg(long, default_value = "public")]
         out: PathBuf,
         /// Include pages marked `draft: true`.
@@ -52,7 +52,7 @@ enum Command {
     Serve {
         #[arg(long, default_value = ".")]
         root: PathBuf,
-        /// Output directory (emptied first, but only if ferrisite created it).
+        /// Output directory, updated in place; refuses a non-empty directory ferrisite didn't create.
         #[arg(long, default_value = ".ferrisite-serve")]
         out: PathBuf,
         #[arg(long, default_value_t = 1313)]
