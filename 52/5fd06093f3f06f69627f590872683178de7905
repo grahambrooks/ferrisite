@@ -1,0 +1,31 @@
+Cargo.lock
+  s_38439ae326f7ae::t_59d82b5ad35f0c 39
+Cargo.toml
+  s_38439ae326f7ae::t_0401edee1c5220 28-29
+DESIGN.md
+  s_38439ae326f7ae::t_d427aabbeb62d8 266-269,298-305
+src/build.rs
+  s_38439ae326f7ae::t_dc92b6cd21b7cb 53-54
+src/config.rs
+  s_38439ae326f7ae::t_7a6721eab26eaf 138-159,171-172
+src/diagrams.rs
+  s_38439ae326f7ae::t_0d67ca5cb14692 48-49,58-59,63-73,113-114,182-213,270-306
+src/markup/highlight.rs
+  s_38439ae326f7ae::t_19e33be0f24d17 111-115,129-132,215,217,219,221-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "525fd06093f3f06f69627f590872683178de7905",
+  "prompts": {},
+  "sessions": {
+    "s_38439ae326f7ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e88d1d-b3bb-451e-9770-aa1214b3f499",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Graham Brooks <graham@grahambrooks.com>"
+    }
+  }
+}
