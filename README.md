@@ -45,12 +45,17 @@ deliberately doesn't do (no plugin API, no Sass, no Hugo layouts).
 
 ### Homebrew (macOS and Linux)
 
-The formula lives in this repository, so the tap needs its URL:
+The formula lives in this repository, so the tap needs its URL. Since
+Homebrew 6, a third-party formula must be trusted before it will load:
 
 ```bash
+brew trust --formula grahambrooks/ferrisite/ferrisite
 brew tap grahambrooks/ferrisite https://github.com/grahambrooks/ferrisite
 brew install grahambrooks/ferrisite/ferrisite
 ```
+
+Each release updates `Formula/ferrisite.rb` from its published checksums, so
+`brew upgrade ferrisite` picks up new versions.
 
 ### Download a release binary
 
