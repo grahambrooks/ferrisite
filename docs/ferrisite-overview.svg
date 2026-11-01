@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 1200 700" width="1200" height="700" role="img" aria-labelledby="t d">
+  <title id="t">ferrisite at a glance</title>
+  <desc id="d">You write two lines of config and Markdown or AsciiDoc with diagrams as text. One pure-Rust binary discovers, parses, resolves, renders and emits the site, rendering Mermaid, PlantUML and forge diagrams through one scene model into light and dark SVG. You get HTML, feeds, a sitemap, Markdown copies, llms.txt, social cards and a link check. A full build of grahambrooks.com takes about one second and output is byte-identical between builds.</desc>
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .card { fill: #f6f8fa; stroke: #d1d9e0; stroke-width: 1; }
+      .code { fill: #ffffff; stroke: #d1d9e0; stroke-width: 1; }
+      .fg { fill: #1f2328; }
+      .muted { fill: #59636e; }
+      .accent { fill: #c2410c; }
+      .teal { fill: #0f766e; }
+      .chip { fill: #fff1e8; stroke: #c2410c; stroke-width: 1.2; }
+      .eng { fill: #ffffff; stroke: #0f766e; stroke-width: 1.2; }
+      .scene { fill: #0f766e; }
+      .onscene { fill: #ffffff; }
+      .svglight { fill: #ffffff; stroke: #8c959f; stroke-width: 1; }
+      .svgdark { fill: #1f2328; stroke: #1f2328; stroke-width: 1; }
+      .ondark { fill: #f0f6fc; }
+      .onlight { fill: #1f2328; }
+      .line { stroke: #8c959f; stroke-width: 1.5; fill: none; }
+      .flow { stroke: #c2410c; stroke-width: 2.5; fill: none; }
+      .arrowhead { fill: #8c959f; }
+      .flowhead { fill: #c2410c; }
+      .pill { fill: none; stroke: #d1d9e0; stroke-width: 1; }
+      .dot { fill: #c2410c; }
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      @media (prefers-color-scheme: dark) {
+        .bg { fill: #0d1117; }
+        .card { fill: #161b22; stroke: #30363d; }
+        .code { fill: #0d1117; stroke: #30363d; }
+        .fg { fill: #e6edf3; }
+        .muted { fill: #9198a1; }
+        .accent { fill: #f0794f; }
+        .teal { fill: #2dd4bf; }
+        .chip { fill: #2a1a12; stroke: #f0794f; }
+        .eng { fill: #0d1117; stroke: #2dd4bf; }
+        .scene { fill: #2dd4bf; }
+        .onscene { fill: #0d1117; }
+        .svglight { fill: #f6f8fa; stroke: #f6f8fa; }
+        .svgdark { fill: #0d1117; stroke: #6e7681; }
+        .ondark { fill: #e6edf3; }
+        .line { stroke: #6e7681; }
+        .flow { stroke: #f0794f; }
+        .arrowhead { fill: #6e7681; }
+        .flowhead { fill: #f0794f; }
+        .pill { stroke: #30363d; }
+        .dot { fill: #f0794f; }
+      }
+    </style>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrowhead"/>
+    </marker>
+    <marker id="flowarr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="flowhead"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1200" height="700" rx="16"/>
+
+  <!-- Header -->
+  <text class="fg" x="40" y="64" font-size="44" font-weight="700">ferrisite</text>
+  <text class="muted" x="40" y="100" font-size="18">Write Markdown. Draw diagrams as text. Get a whole blog from one pure-Rust binary.</text>
+
+  <!-- Column A: you write -->
+  <rect class="card" x="40" y="140" width="300" height="330" rx="12"/>
+  <text class="accent" x="60" y="168" font-size="12" font-weight="700" letter-spacing="1.5">1 · YOU WRITE</text>
+  <text class="fg" x="60" y="192" font-size="18" font-weight="600">Two lines of config</text>
+
+  <rect class="code" x="56" y="206" width="268" height="62" rx="6"/>
+  <text class="muted mono" x="68" y="225" font-size="11">ferrisite.toml</text>
+  <text class="fg mono" x="68" y="243" font-size="12">base_url = "https://example.com/"</text>
+  <text class="fg mono" x="68" y="259" font-size="12">title    = "My Blog"</text>
+
+  <rect class="code" x="56" y="280" width="268" height="174" rx="6"/>
+  <text class="muted mono" x="68" y="299" font-size="11">content/post/hello.md  (or .adoc)</text>
+  <text class="muted mono" x="68" y="318" font-size="12">---</text>
+  <text class="fg mono" x="68" y="334" font-size="12">title: Hello</text>
+  <text class="muted mono" x="68" y="350" font-size="12">---</text>
+  <text class="fg mono" x="68" y="368" font-size="12">Plain prose, as you'd write it.</text>
+  <text class="teal mono" x="68" y="390" font-size="12" font-weight="700">```mermaid</text>
+  <text class="fg mono" x="68" y="406" font-size="12">flowchart LR</text>
+  <text class="fg mono" x="68" y="422" font-size="12">  Write --&gt; Build --&gt; Ship</text>
+  <text class="teal mono" x="68" y="438" font-size="12" font-weight="700">```</text>
+
+  <path class="flow" d="M342,305 L376,305" marker-end="url(#flowarr)"/>
+
+  <!-- Column B: one binary -->
+  <rect class="card" x="380" y="140" width="440" height="330" rx="12"/>
+  <text class="accent" x="400" y="168" font-size="12" font-weight="700" letter-spacing="1.5">2 · ONE BINARY</text>
+  <text class="fg" x="400" y="192" font-size="18" font-weight="600">A deterministic pipeline</text>
+
+  <g font-size="12" font-weight="600" text-anchor="middle">
+    <rect class="chip" x="400" y="208" width="66" height="28" rx="14"/>
+    <text class="fg" x="433" y="226">discover</text>
+    <rect class="chip" x="484" y="208" width="66" height="28" rx="14"/>
+    <text class="fg" x="517" y="226">parse</text>
+    <rect class="chip" x="568" y="208" width="66" height="28" rx="14"/>
+    <text class="fg" x="601" y="226">resolve</text>
+    <rect class="chip" x="652" y="208" width="66" height="28" rx="14"/>
+    <text class="fg" x="685" y="226">render</text>
+    <rect class="chip" x="736" y="208" width="66" height="28" rx="14"/>
+    <text class="fg" x="769" y="226">emit</text>
+  </g>
+  <g class="line" marker-end="url(#arr)">
+    <path d="M467,222 L482,222"/>
+    <path d="M551,222 L566,222"/>
+    <path d="M635,222 L650,222"/>
+    <path d="M719,222 L734,222"/>
+  </g>
+
+  <text class="muted" x="400" y="264" font-size="12" font-weight="700" letter-spacing="1">CONSISTENT DIAGRAMS</text>
+
+  <g font-size="12" text-anchor="middle">
+    <rect class="eng" x="400" y="276" width="140" height="32" rx="6"/>
+    <text class="fg mono" x="470" y="296">mermaid → mmd</text>
+    <rect class="eng" x="400" y="318" width="140" height="32" rx="6"/>
+    <text class="fg mono" x="470" y="338">plantuml → puml</text>
+    <rect class="eng" x="400" y="360" width="140" height="32" rx="6"/>
+    <text class="fg mono" x="470" y="380">forge → forge-dsl</text>
+  </g>
+  <g class="line" marker-end="url(#arr)">
+    <path d="M541,292 C556,292 556,326 570,330"/>
+    <path d="M541,334 L570,334"/>
+    <path d="M541,376 C556,376 556,342 570,338"/>
+  </g>
+
+  <rect class="scene" x="572" y="312" width="110" height="44" rx="8"/>
+  <text class="onscene mono" x="627" y="331" font-size="12" font-weight="700" text-anchor="middle">diagram-scene</text>
+  <text class="onscene" x="627" y="347" font-size="11" text-anchor="middle">one layout model</text>
+
+  <g class="line" marker-end="url(#arr)">
+    <path d="M683,328 C696,328 694,306 708,306"/>
+    <path d="M683,340 C696,340 694,362 708,362"/>
+  </g>
+  <rect class="svglight" x="710" y="290" width="92" height="32" rx="6"/>
+  <text class="onlight" x="756" y="310" font-size="12" font-weight="600" text-anchor="middle">SVG · light</text>
+  <rect class="svgdark" x="710" y="346" width="92" height="32" rx="6"/>
+  <text class="ondark" x="756" y="366" font-size="12" font-weight="600" text-anchor="middle">SVG · dark</text>
+
+  <text class="muted" x="400" y="424" font-size="12.5">Laid out once, painted in both palettes, real &lt;text&gt;.</text>
+  <text class="muted" x="400" y="444" font-size="12.5">Bad syntax fails the build with file and line.</text>
+
+  <path class="flow" d="M822,305 L856,305" marker-end="url(#flowarr)"/>
+
+  <!-- Column C: you get -->
+  <rect class="card" x="860" y="140" width="300" height="330" rx="12"/>
+  <text class="accent" x="880" y="168" font-size="12" font-weight="700" letter-spacing="1.5">3 · YOU GET</text>
+  <text class="fg" x="880" y="192" font-size="18" font-weight="600">A complete static site</text>
+
+  <g font-size="13.5">
+    <circle class="dot" cx="886" cy="219" r="3.5"/>
+    <text class="fg" x="898" y="224">Posts, lists, tags, pagination</text>
+    <circle class="dot" cx="886" cy="250" r="3.5"/>
+    <text class="fg" x="898" y="255">RSS, Atom and JSON feeds</text>
+    <circle class="dot" cx="886" cy="281" r="3.5"/>
+    <text class="fg" x="898" y="286">Sitemap, robots.txt, search index</text>
+    <circle class="dot" cx="886" cy="312" r="3.5"/>
+    <text class="fg" x="898" y="317">Highlighted code, light and dark</text>
+    <circle class="dot" cx="886" cy="343" r="3.5"/>
+    <text class="fg" x="898" y="348">A Markdown copy of every page</text>
+    <circle class="dot" cx="886" cy="374" r="3.5"/>
+    <text class="fg" x="898" y="379">llms.txt for AI agents</text>
+    <circle class="dot" cx="886" cy="405" r="3.5"/>
+    <text class="fg" x="898" y="410">Social card images</text>
+    <circle class="dot" cx="886" cy="436" r="3.5"/>
+    <text class="fg" x="898" y="441">Live-reload preview server</text>
+  </g>
+
+  <!-- Stats -->
+  <g>
+    <rect class="card" x="40" y="500" width="265" height="110" rx="12"/>
+    <text class="accent" x="60" y="546" font-size="34" font-weight="700">~1 s</text>
+    <text class="muted" x="60" y="572" font-size="13">full build of grahambrooks.com,</text>
+    <text class="muted" x="60" y="590" font-size="13">254 pages, from empty</text>
+
+    <rect class="card" x="325" y="500" width="265" height="110" rx="12"/>
+    <text class="accent" x="345" y="546" font-size="34" font-weight="700">0.25 s</text>
+    <text class="muted" x="345" y="572" font-size="13">rebuild with nothing changed;</text>
+    <text class="muted" x="345" y="590" font-size="13">unchanged files aren't rewritten</text>
+
+    <rect class="card" x="610" y="500" width="265" height="110" rx="12"/>
+    <text class="accent" x="630" y="546" font-size="34" font-weight="700">0</text>
+    <text class="muted" x="630" y="572" font-size="13">link differences from the Hugo</text>
+    <text class="muted" x="630" y="590" font-size="13">build it replaces (9,672 checked)</text>
+
+    <rect class="card" x="895" y="500" width="265" height="110" rx="12"/>
+    <text class="accent" x="915" y="546" font-size="34" font-weight="700">Identical</text>
+    <text class="muted" x="915" y="572" font-size="13">bytes from every build of the</text>
+    <text class="muted" x="915" y="590" font-size="13">same inputs</text>
+  </g>
+
+  <!-- Pills -->
+  <g font-size="13" text-anchor="middle">
+    <rect class="pill" x="177" y="636" width="156" height="30" rx="15"/>
+    <text class="fg" x="255" y="656">One static binary</text>
+    <rect class="pill" x="345" y="636" width="81" height="30" rx="15"/>
+    <text class="fg" x="385.5" y="656">No Node</text>
+    <rect class="pill" x="438" y="636" width="81" height="30" rx="15"/>
+    <text class="fg" x="478.5" y="656">No Java</text>
+    <rect class="pill" x="531" y="636" width="171" height="30" rx="15"/>
+    <text class="fg" x="616.5" y="656">No headless browser</text>
+    <rect class="pill" x="714" y="636" width="201" height="30" rx="15"/>
+    <text class="fg" x="814.5" y="656">Hugo-compatible content</text>
+    <rect class="pill" x="927" y="636" width="96" height="30" rx="15"/>
+    <text class="fg" x="975" y="656">Pure Rust</text>
+  </g>
+</svg>
