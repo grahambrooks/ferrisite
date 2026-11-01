@@ -2,7 +2,7 @@
 name = "ferrisite"
 version = "2026.10.0"
 edition = "2024"
-rust-version = "1.90"
+rust-version = "1.99"
 description = "A pure-Rust static site generator for technical blogs, built on mmd, puml, adoc and forge"
 license = "MIT"
 repository = "https://github.com/grahambrooks/ferrisite"
