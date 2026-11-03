@@ -1,0 +1,39 @@
+.idea/ferrisite.iml
+  s_3af201839d09d6::t_71ac845f0bcd25 12
+.idea/modules.xml
+  s_3af201839d09d6::t_57a2a6f83de60b 8
+.idea/vcs.xml
+  s_3af201839d09d6::t_4d196f96233b86 6
+CLAUDE.md
+  s_3af201839d09d6::t_44bd1e83483355 10-11
+DESIGN.md
+  s_3af201839d09d6::t_b0687715d3561c 231
+Makefile
+  s_3af201839d09d6::t_20b161275ac127 1-6,8-13,16-30,33-39
+README.md
+  s_3af201839d09d6::t_9eed432f8de0e2 188-190
+prek.toml
+  s_3af201839d09d6::t_084cd18c2057db 1-41
+release.mk
+  s_3af201839d09d6::t_b360576690ed09 1-48
+tests/fixtures/hugo_heading_ids.json
+  s_3af201839d09d6::t_9dcca463c1b695 1774
+tests/fixtures/site/static/images/d.svg
+  s_3af201839d09d6::t_fd55b47a45dcfe 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e68d7560b2fe0965dcc883704ed446e69c09756b",
+  "prompts": {},
+  "sessions": {
+    "s_3af201839d09d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca62a504-f3e7-484c-9e2d-47cfc6cd0491",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Graham Brooks <graham@grahambrooks.com>"
+    }
+  }
+}
