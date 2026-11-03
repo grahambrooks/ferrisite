@@ -185,7 +185,9 @@ SVG, so an agent reads what the diagram means.
 ## Development
 
 ```bash
-make pre-commit   # cargo fmt --check, clippy -D warnings, cargo test
+make check         # the CI check job: fmt --check, clippy -D warnings, test
+make hooks         # install prek hooks (fast checks on commit, make check on push)
+make release-dry   # show the CalVer tag `make release` would push
 ```
 
 See [DESIGN.md](DESIGN.md) for the pipeline, decisions and milestones, and

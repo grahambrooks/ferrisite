@@ -7,7 +7,8 @@ anything**; it records scope, non-goals and open questions.
 
 ## Rules
 
-- Run `make pre-commit` before every commit; commit only after it prints
+- Run `make check` (the CI check job; `make pre-commit` is an alias) before
+  every commit; commit only after it prints
   `All pre-commit checks passed.` Fix failures at the root; no `#[allow]` or
   skipped hooks.
 - Single crate, directory modules under `src/`. No workspace.

@@ -228,7 +228,7 @@ is why it isn't the base here.
   casual-review-single-crate-layout).
 - **CalVer, in-repo Homebrew formula, GitHub Actions release binaries;
   crates.io publish manual** (vault: graham-release-and-distribution-conventions).
-- **`make pre-commit` before every commit**: fmt, clippy `-D warnings`, test.
+- **`make check` before every commit**: fmt, clippy `-D warnings`, test.
 - **Content portability during transition.** Until the Hugo fallback job is
   retired (M5 + one release), every content file must still build under Hugo.
   So ferrisite reads Hugo's frontmatter and shortcode syntax rather than
