@@ -29,7 +29,7 @@ adoc = { git = "https://github.com/grahambrooks/adoc", tag = "v2026.11.3" }
 camino = "1"
 # Pure-Rust regex engine (fancy-regex); the default onig engine is C.
 syntect = { version = "5", default-features = false, features = ["default-fancy"] }
-resvg = "0.49"
+resvg = "0.50"
 typst-assets = { version = "0.15.1", features = ["fonts"] }
 ttf-parser = "0.25"
 
