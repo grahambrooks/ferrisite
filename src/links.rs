@@ -76,7 +76,7 @@ pub fn list_files(root: &Path) -> Result<Vec<String>> {
 
 /// The redirect target of a Hugo-style alias stub, if the page is one.
 pub fn alias_target(html: &str) -> Option<String> {
-    let head = &html[..html.len().min(1024)];
+    let head = &html[..html.floor_char_boundary(1024)];
     let i = head.find("http-equiv=\"refresh\"")?;
     let rest = &head[i..];
     let u = rest.find("url=")? + 4;
@@ -271,6 +271,13 @@ pub fn unescape(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn alias_target_does_not_split_a_multibyte_char_at_the_scan_limit() {
+        // '—' is 3 bytes; place it across byte 1024.
+        let html = format!("{}—{}", "x".repeat(1022), "y".repeat(100));
+        assert_eq!(alias_target(&html), None);
+    }
 
     #[test]
     fn script_contents_are_not_links() {
