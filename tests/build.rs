@@ -322,6 +322,51 @@ fn broken_diagram_fails_with_file_and_line() {
     );
 }
 
+/// A tag merged into another keeps its URL alive as an alias. A page still
+/// using the old tag would give it a page at that URL; the build fails naming
+/// the page, and only when that page is built (here, a draft).
+#[test]
+fn retired_term_in_use_fails_naming_the_page() {
+    let (dir, root) = temp_site(&[
+        (
+            "ferrisite.toml",
+            "base_url = \"https://e.test\"\ntitle = \"T\"\ntaxonomies = [\"tags\"]\n",
+        ),
+        (
+            "content/tags/tools/_index.md",
+            "---\ntitle: Tools\naliases:\n- /tags/old/\n---\n",
+        ),
+        (
+            "content/post/a.md",
+            "---\ntitle: A\ndate: 2026-01-01\ntags: [tools]\n---\n\nA.\n",
+        ),
+        (
+            "content/post/wip.md",
+            "---\ntitle: W\ndate: 2026-01-02\ndraft: true\ntags: [tools, old]\n---\n\nW.\n",
+        ),
+    ]);
+    let opts = |drafts| Options {
+        root: root.clone(),
+        out: dir.path().join(if drafts { "drafts" } else { "out" }),
+        drafts,
+        future: false,
+        base_url: None,
+        cards: false,
+    };
+    build(&opts(false)).expect("without drafts nothing uses the retired tag");
+    let err = build(&opts(true))
+        .err()
+        .expect("a draft using the retired tag must fail a drafts build");
+    let msg = format!("{err:#}");
+    assert!(
+        msg.contains("`old`")
+            && msg.contains("post/wip.md")
+            && msg.contains("tags/tools/_index.md")
+            && msg.contains("/tags/tools/"),
+        "{msg}"
+    );
+}
+
 #[test]
 fn agent_readable_output_cards_and_check() {
     let (dir, root) = temp_site(&[

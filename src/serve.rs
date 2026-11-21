@@ -8,6 +8,7 @@ use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 
@@ -46,8 +47,14 @@ pub fn serve(root: PathBuf, out: PathBuf, port: u16, drafts: bool) -> Result<()>
     Ok(())
 }
 
-/// Counts finished builds; pages poll it and reload when it changes.
+/// Counts finished builds, failed ones included; pages poll it and reload
+/// when it changes.
 static BUILDS: AtomicU64 = AtomicU64::new(0);
+
+/// The last build's error, until a build succeeds. While it is set, every
+/// page request gets the error instead of the output directory's HTML, which
+/// is left over from the last good build and would otherwise pass for current.
+static FAILURE: Mutex<Option<String>> = Mutex::new(None);
 
 const RELOAD_PATH: &str = "/__ferrisite/build";
 
@@ -56,17 +63,39 @@ const RELOAD_SCRIPT: &str = "<script>(()=>{let v=null;setInterval(async()=>{try{
 
 fn rebuild(opts: &Options) {
     let started = std::time::Instant::now();
-    match build::build(opts) {
+    let result = build::build(opts);
+    let failure = match &result {
         Ok(r) => {
-            BUILDS.fetch_add(1, Ordering::SeqCst);
             println!(
                 "Built {} pages in {} ms",
                 r.pages,
                 started.elapsed().as_millis()
-            )
+            );
+            None
         }
-        Err(e) => eprintln!("Build failed: {e:#}"),
-    }
+        Err(e) => {
+            let msg = format!("{e:#}");
+            eprintln!("Build failed: {msg}");
+            eprintln!("Pages show this error until a build succeeds.");
+            Some(msg)
+        }
+    };
+    *FAILURE.lock().unwrap_or_else(|e| e.into_inner()) = failure;
+    BUILDS.fetch_add(1, Ordering::SeqCst);
+}
+
+/// The page served for every HTML request while the last build failed.
+fn failure_page(msg: &str) -> Vec<u8> {
+    format!(
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Build failed</title>\
+         <style>body{{font:16px/1.5 system-ui,sans-serif;max-width:60rem;margin:2rem auto;padding:0 1rem}}\
+         pre{{white-space:pre-wrap;background:#fdecea;color:#5f2120;padding:1rem;border-radius:4px}}</style></head>\
+         <body><h1>Build failed</h1><pre>{}</pre>\
+         <p>The output directory still holds the last good build, so it isn't served. \
+         This page reloads when you save a fix.</p></body></html>",
+        crate::markup::highlight::escape(msg)
+    )
+    .into_bytes()
 }
 
 /// What the watcher ignores: dot-directories and dot-files (`.git`, editor
@@ -159,6 +188,17 @@ fn respond(mut stream: TcpStream, out: &Path) -> std::io::Result<()> {
     let mut file = out.join(&rel);
     if file.is_dir() {
         file = file.join("index.html");
+    }
+    // Stylesheets, images and the like still come from the output directory.
+    if (content_type(&file).starts_with("text/html") || !file.exists())
+        && let Some(msg) = FAILURE.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    {
+        return write(
+            &mut stream,
+            "500 Internal Server Error",
+            "text/html; charset=utf-8",
+            &with_reload(failure_page(&msg)),
+        );
     }
     match std::fs::read(&file) {
         Ok(body) => {
@@ -258,6 +298,14 @@ mod tests {
         );
         let bare = String::from_utf8(with_reload(b"<p>x</p>".to_vec())).unwrap();
         assert_eq!(bare, format!("<p>x</p>{RELOAD_SCRIPT}"));
+    }
+
+    #[test]
+    fn failure_page_shows_the_error_escaped() {
+        let page = String::from_utf8(failure_page("bad <tag> & \"quote\"")).unwrap();
+        assert!(page.contains("<h1>Build failed</h1>"), "{page}");
+        assert!(page.contains("bad &lt;tag&gt; &amp;"), "{page}");
+        assert!(!page.contains("<tag>"), "{page}");
     }
 
     #[test]

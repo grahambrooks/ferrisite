@@ -777,25 +777,58 @@ fn collect_aliases(
     sections: &[Section],
     taxonomies: &[Taxonomy],
 ) -> Result<Vec<Alias>> {
-    let mut aliases: BTreeMap<String, String> = BTreeMap::new();
-    let mut add = |from: &str, target: &str, origin: &str| -> Result<()> {
+    // Output path → (target, where the alias was declared).
+    type Aliases = BTreeMap<String, (String, String)>;
+    fn add(aliases: &mut Aliases, from: &str, target: &str, origin: &str) -> Result<()> {
         let path = alias_path(from);
-        if let Some(existing) = aliases.get(&path)
+        if let Some((existing, first)) = aliases.get(&path)
             && existing != target
         {
-            bail!("alias {from} ({origin}) already redirects to {existing}, not {target}");
+            bail!(
+                "alias {from} ({origin}) already redirects to {existing} ({first}), not {target}"
+            );
         }
-        aliases.insert(path, target.to_string());
+        aliases.insert(path, (target.to_string(), origin.to_string()));
         Ok(())
-    };
+    }
+    let mut aliases = Aliases::new();
     for e in entries {
         for a in &e.page.fm.aliases {
-            add(a, &e.page.url, &e.page.source)?;
+            add(&mut aliases, a, &e.page.url, &e.page.source)?;
+        }
+    }
+    // A term used by a page gets a page of its own, which an alias redirecting
+    // its URL elsewhere would overwrite: typically a retired term, merged into
+    // another and aliased to it, that a page (often a draft) still uses.
+    for t in taxonomies {
+        for term in t.terms.iter().filter(|t| !t.pages.is_empty()) {
+            if let Some((target, origin)) = aliases.get(&alias_path(&term.url))
+                && *target != term.url
+            {
+                let users: Vec<&str> = term
+                    .pages
+                    .iter()
+                    .map(|&i| entries[i].page.source.as_str())
+                    .collect();
+                bail!(
+                    "{} term `{}` is used by {}, but {origin} redirects {} to {target}: \
+                     use the term it redirects to, or remove the alias",
+                    t.name,
+                    term.name,
+                    users.join(", "),
+                    term.url
+                );
+            }
         }
     }
     // Hugo makes `<list>/page/1/` an alias of the list's first page.
     for s in sections.iter().filter(|s| !s.list.is_empty()) {
-        add(&format!("{}page/1/", s.url), &s.url, "pagination")?;
+        add(
+            &mut aliases,
+            &format!("{}page/1/", s.url),
+            &s.url,
+            "pagination",
+        )?;
     }
     for t in taxonomies {
         for term in t
@@ -803,7 +836,12 @@ fn collect_aliases(
             .iter()
             .filter(|t| t.paginated && !t.pages.is_empty())
         {
-            add(&format!("{}page/1/", term.url), &term.url, "pagination")?;
+            add(
+                &mut aliases,
+                &format!("{}page/1/", term.url),
+                &term.url,
+                "pagination",
+            )?;
         }
     }
     let real: std::collections::HashSet<String> = entries
@@ -815,7 +853,7 @@ fn collect_aliases(
     }
     Ok(aliases
         .into_iter()
-        .map(|(path, target)| Alias { path, target })
+        .map(|(path, (target, _))| Alias { path, target })
         .collect())
 }
 
