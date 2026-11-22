@@ -90,7 +90,7 @@ gh release download -R grahambrooks/ferrisite -p "*-aarch64-apple-darwin.tar.gz"
 
 ### From source
 
-Needs Rust 1.99 or later; `rust-toolchain.toml` pins the version.
+Needs Rust 1.100 or later; `rust-toolchain.toml` pins the version.
 
 ```bash
 cargo install --git https://github.com/grahambrooks/ferrisite

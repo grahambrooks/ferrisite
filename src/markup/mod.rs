@@ -12,13 +12,13 @@ pub mod toc;
 use crate::diagrams::{Diagrams, Lang};
 use anchor::IdFactory;
 use comrak::adapters::{
-    CodefenceRendererAdapter, HeadingAdapter, HeadingMeta, SyntaxHighlighterAdapter,
+    CodefenceMeta, CodefenceRendererAdapter, HeadingAdapter, HeadingMeta, SyntaxHighlightMeta,
+    SyntaxHighlighterAdapter,
 };
-use comrak::nodes::Sourcepos;
 use comrak::options::Plugins;
 use comrak::{Options, markdown_to_html_with_plugins};
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -59,12 +59,7 @@ struct Headings {
 }
 
 impl HeadingAdapter for Headings {
-    fn enter(
-        &self,
-        output: &mut dyn fmt::Write,
-        heading: &HeadingMeta,
-        _sourcepos: Option<Sourcepos>,
-    ) -> fmt::Result {
+    fn enter(&self, output: &mut dyn fmt::Write, heading: &HeadingMeta) -> fmt::Result {
         let mut state = self.state.lock().expect("heading state");
         let id = state.0.unique(&heading.content);
         state.1.push(Heading {
@@ -88,10 +83,10 @@ impl SyntaxHighlighterAdapter for Highlighter {
     fn write_highlighted(
         &self,
         output: &mut dyn fmt::Write,
-        lang: Option<&str>,
-        code: &str,
+        highlight: &SyntaxHighlightMeta<'_>,
     ) -> fmt::Result {
-        let html = lang
+        let code = highlight.code;
+        let html = Some(highlight.lang)
             .filter(|l| !l.is_empty())
             .and_then(|l| highlight::spans(l, code))
             .unwrap_or_else(|| highlight::escape(code));
@@ -101,7 +96,8 @@ impl SyntaxHighlighterAdapter for Highlighter {
     fn write_pre_tag(
         &self,
         output: &mut dyn fmt::Write,
-        _attributes: HashMap<&'static str, Cow<'_, str>>,
+        _highlight: &SyntaxHighlightMeta<'_>,
+        _attributes: BTreeMap<&str, Cow<'_, str>>,
     ) -> fmt::Result {
         output.write_str(highlight::OPEN)
     }
@@ -109,7 +105,8 @@ impl SyntaxHighlighterAdapter for Highlighter {
     fn write_code_tag(
         &self,
         output: &mut dyn fmt::Write,
-        attributes: HashMap<&'static str, Cow<'_, str>>,
+        _highlight: &SyntaxHighlightMeta<'_>,
+        attributes: BTreeMap<&str, Cow<'_, str>>,
     ) -> fmt::Result {
         let lang = attributes
             .get("class")
@@ -178,14 +175,8 @@ struct DiagramFence<'a> {
 }
 
 impl CodefenceRendererAdapter for DiagramFence<'_> {
-    fn write(
-        &self,
-        output: &mut dyn fmt::Write,
-        _lang: &str,
-        meta: &str,
-        code: &str,
-        _sourcepos: Option<Sourcepos>,
-    ) -> fmt::Result {
+    fn write(&self, output: &mut dyn fmt::Write, codefence: &CodefenceMeta<'_>) -> fmt::Result {
+        let (meta, code) = (codefence.meta, codefence.code);
         let n = self.counter.fetch_add(1, Ordering::Relaxed);
         let id = format!("{}{n}", self.prefix);
         match self.diagrams.render(self.lang, code, meta, &id) {
